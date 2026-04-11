@@ -161,7 +161,7 @@ function uD(){for(var i=0;i<4;i++){var d=$('pd'+i);if(d)d.className='pin-dot'+(i
 function rHome(){app().innerHTML='<div class="home fadein"><div class="logo"><h1>SAFA Terrain</h1><p>Enquêtes à domicile</p><div style="text-align:center"><span class="lock-badge">🔒 Données 100% locales</span></div></div><div class="mcards"><div class="mcard af" onclick="oM(\'af\')"><div class="mcard-icon">👨‍👩‍👧</div><div class="mcard-count">'+LS.ds('af').length+'</div><h3>Aide aux Familles</h3><p>Dossier social, barème AVIQ, contribution</p></div><div class="mcard ams" onclick="oM(\'ams\')"><div class="mcard-icon">🏠</div><div class="mcard-count">'+LS.ds('ams').length+'</div><h3>Aide Ménagère Sociale</h3><p>Tâches, état domicile, fréquence</p></div><div class="mcard repas" onclick="oM(\'repas\')"><div class="mcard-icon">🍽️</div><div class="mcard-count">'+LS.ds('repas').length+'</div><h3>Repas à domicile</h3><p>Régime, jours, allergies</p></div></div><div class="slink" onclick="S.screen=\'settings\';render()">⚙️ Paramètres</div></div>'}
 window.oM=function(m){S.module=m;S.screen='list';render();window.scrollTo(0,0)};
 function rSet(){app().innerHTML='<div class="header"><button class="hback" onclick="S.screen=\'home\';render()">←</button><span class="htitle">Paramètres</span></div><div class="spage fadein"><div class="sitem"><h4>🔒 Sécurité</h4><p>Données stockées uniquement sur ce téléphone. Rien sur internet. PIN chiffré. Verrouillage auto quand vous quittez l\'app.</p></div><div class="sitem"><h4>🔑 Changer le PIN</h4><p>Supprime l\'ancien code pour en créer un nouveau.</p><button class="btn btn-danger" style="margin-top:10px;flex:none;padding:10px 20px" onclick="if(confirm(\'Réinitialiser le PIN ?\')){LS.s(\'pinHash\',null);S.screen=\'pin\';render()}">Réinitialiser</button></div><div class="sitem"><h4>🗑️ Supprimer les données</h4><p>Supprime tous les dossiers. Irréversible.</p><button class="btn btn-danger" style="margin-top:10px;flex:none;padding:10px 20px" onclick="if(confirm(\'Supprimer TOUS les dossiers ?\')){LS.s(\'dossiers\',[]);toast(\'Supprimé\');render()}">Tout supprimer</button></div></div>'}
-function rList(){var m=S.module;var ds=LS.ds(m);var lb=m==='af'?'Aide Familles':m==='ams'?'AMS':'Repas';var it='';if(!ds.length)it='<div class="dempty"><div class="dempty-icon">📋</div><p>Aucun dossier</p></div>';else ds.forEach(function(d){it+='<div class="ditem" onclick="eD(\''+d.id+'\')"><div class="ditem-info"><div class="ditem-name">'+(d.nom||'Sans nom')+' '+(d.prenom||'')+'</div><div class="ditem-date">'+(d.updatedAt?new Date(d.updatedAt).toLocaleDateString('fr-BE'):'—')+'</div></div><button class="ditem-del" onclick="event.stopPropagation();dD(\''+d.id+'\')">🗑</button></div>'});app().innerHTML='<div class="header"><button class="hback" onclick="S.screen=\'home\';render();window.scrollTo(0,0)">←</button><span class="htitle">'+lb+'</span><span class="badge '+m+'">'+m.toUpperCase()+'</span></div><div class="dlist fadein">'+it+'</div><button class="fab '+m+'" onclick="nD()">+ Nouvelle enquête</button>'}
+function rList(){var m=S.module;var ds=LS.ds(m);var lb=m==='af'?'Aide Familles':m==='ams'?'AMS':'Repas';var it='';if(!ds.length)it='<div class="dempty"><div class="dempty-icon">📋</div><p>Aucun dossier</p></div>';else{ds.forEach(function(d){it+='<div class="ditem" onclick="eD(\''+d.id+'\')"><div class="ditem-info"><div class="ditem-name">'+(d.nom||'Sans nom')+' '+(d.prenom||'')+'</div><div class="ditem-date">'+(d.updatedAt?new Date(d.updatedAt).toLocaleDateString('fr-BE'):'—')+'</div></div><button class="ditem-del" onclick="event.stopPropagation();dD(\''+d.id+'\')">🗑</button></div>'});it+='<button class="exbtn" style="margin-top:8px;margin-bottom:80px" onclick="expCSV()"><span style="font-size:20px">📊</span><span>Exporter le tableau ('+ds.length+' dossiers)</span></button>'}app().innerHTML='<div class="header"><button class="hback" onclick="S.screen=\'home\';render();window.scrollTo(0,0)">←</button><span class="htitle">'+lb+'</span><span class="badge '+m+'">'+m.toUpperCase()+'</span></div><div class="dlist fadein">'+it+'</div><button class="fab '+m+'" onclick="nD()">+ Nouvelle enquête</button>'}
 window.nD=function(){S.form={id:uid(),module:S.module,createdAt:new Date().toISOString(),charges:{},membres:[],revenusBen:[],planAide:{}};S.step=0;S.screen='form';render();window.scrollTo(0,0)};
 window.eD=function(id){var a=LS.g('dossiers')||[];S.form=a.find(function(d){return d.id===id})||{};if(!S.form.charges)S.form.charges={};if(!S.form.membres)S.form.membres=[];if(!S.form.revenusBen)S.form.revenusBen=[];if(!S.form.planAide)S.form.planAide={};S.step=0;S.screen='form';render();window.scrollTo(0,0)};
 window.dD=function(id){if(confirm('Supprimer ?')){LS.dl(id);render()}};
@@ -207,6 +207,34 @@ if(m==='af'){var r=cF(f);L.push('========================================');L.pu
 }else{L.push('=== DOSSIER REPAS A DOMICILE ===');L.push('Nom: '+(f.nom||'')+' '+(f.prenom||''));L.push('Date naissance: '+(f.dateNaissance||'—'));L.push('Adresse: '+(f.adresse||'')+', '+(f.cp||'')+' '+(f.localite||''));L.push('Tel: '+(f.tel||'—'));L.push('Contact urgence: '+(f.contactUrgence||'—'));L.push('');L.push('Regime: '+(f.regime||'—'));L.push('Jours: '+((f.joursLivraison||[]).join(', ')||'—'));L.push('Repas/jour: '+(f.nbRepasJour||'—'));L.push('Allergies: '+(f.allergies||'Aucune'));L.push('');L.push('Observations: '+(f.obsLivraison||'—'));L.push('Remarques: '+(f.remarquesRepas||'—'))}
 var sub=(m==='af'?'Dossier AF':m==='ams'?'Dossier AMS':'Dossier Repas')+' - '+(f.nom||'')+' '+(f.prenom||'');
 var a=document.createElement('a');a.href='mailto:?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(L.join('\n'));document.body.appendChild(a);a.click();document.body.removeChild(a)};
+// ── CSV EXPORT (100% local, zero network) ──
+function csvEsc(v){v=String(v||'').replace(/"/g,'""');if(v.indexOf(',')>=0||v.indexOf('"')>=0||v.indexOf('\n')>=0)v='"'+v+'"';return v}
+window.expCSV=function(){
+  var m=S.module;var ds=LS.ds(m);if(!ds.length){toast('Aucun dossier');return}
+  var rows=[],hdr=[];
+  if(m==='af'){
+    hdr=['N° Dossier','Date visite','Travailleur social','Nom','Prénom','Date naissance','Adresse','CP','Localité','Téléphone','GSM','Email','Sexe','Handicap','% Handicap','Fondement','Situation ménage','Revenus bénéficiaire (EUR)','Revenus membres (EUR)','Total revenus (EUR)','Pension alim. (EUR)','Charges déductibles (EUR/mois)','Revenu net (EUR)','Code barème','Taux horaire (EUR)','Déplacement (EUR)','Coût horaire (EUR)','Santé','Limitations','Changement familial','Contexte social','Isolement','Aide consentie','Demande par','Cadre','Logement','Milieu','Plan aide','Heures/sem','Fréquence','Durée','Date début','Remarques'];
+    ds.forEach(function(f){
+      var r=cF(f);var pi=[];for(var k in (f.planAide||{}))(f.planAide[k]||[]).forEach(function(x){pi.push(x)});
+      rows.push([f.numDossier,f.dateVisite,f.travailleurSocial,f.nom,f.prenom,f.dateNaissance,f.adresse,f.cp,f.localite,f.tel,f.gsm,f.email,f.sexe,f.handicap,f.handicapPct,f.fondement,f.situationMenage,r.tb.toFixed(2),r.tm.toFixed(2),r.tr.toFixed(2),r.pa.toFixed(2),r.cd.toFixed(2),r.rn.toFixed(2),r.code,r.co.toFixed(2),r.dp.toFixed(2),r.ct.toFixed(2),(f.sante||[]).join(' / '),(f.limitations||[]).join(' / '),f.changement,(f.contexteSocial||[]).join(' / '),f.isolement,f.aideConsentie,f.demandePar,f.cadre,f.logement,f.milieu,pi.join(' / '),f.heuresSem,(f.foisSem||'')+' fois/sem',f.dureeAide,f.dateDebut,f.remarquesOrga]);
+    });
+  }else if(m==='ams'){
+    hdr=['Date visite','Nom','Prénom','Adresse','CP','Localité','Téléphone','Tâches','Fréquence','Observations'];
+    ds.forEach(function(f){rows.push([f.dateVisite,f.nom,f.prenom,f.adresse,f.cp,f.localite,f.tel,(f.taches||[]).join(' / '),f.frequence,f.observations])});
+  }else{
+    hdr=['Nom','Prénom','Date naissance','Adresse','CP','Localité','Téléphone','Contact urgence','Régime','Jours livraison','Repas/jour','Allergies','Observations livraison','Remarques'];
+    ds.forEach(function(f){rows.push([f.nom,f.prenom,f.dateNaissance,f.adresse,f.cp,f.localite,f.tel,f.contactUrgence,f.regime,(f.joursLivraison||[]).join(' / '),f.nbRepasJour,f.allergies,f.obsLivraison,f.remarquesRepas])});
+  }
+  var csv='\uFEFF'+hdr.map(csvEsc).join(',')+'\n';
+  rows.forEach(function(row){csv+=row.map(csvEsc).join(',')+'\n'});
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='SAFA_'+m.toUpperCase()+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Tableau exporté ✓');
+};
 render();
 </script>
 </body>
