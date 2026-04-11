@@ -411,8 +411,8 @@ function renderAF(st){
       <div class="memcard">
         <div class="memhead"><span class="memtitle">Membre ${i+1}</span><button class="memdel" onclick="delMembre(${i})">✕</button></div>
         <div class="frow">
-          <div class="field"><label class="flabel">Nom</label><input class="finput" value="${m.nom||''}" onchange="updMembre(${i},'nom',this.value)"></div>
-          <div class="field"><label class="flabel">Prénom</label><input class="finput" value="${m.prenom||''}" onchange="updMembre(${i},'prenom',this.value)"></div>
+          <div class="field"><label class="flabel">Nom</label><input class="finput" value="${m.nom||''}" oninput="S.form.membres[${i}].nom=this.value"></div>
+          <div class="field"><label class="flabel">Prénom</label><input class="finput" value="${m.prenom||''}" oninput="S.form.membres[${i}].prenom=this.value"></div>
         </div>
         <div class="field"><label class="flabel">Lien</label>
           <select class="finput" onchange="updMembre(${i},'lien',this.value)">
@@ -433,7 +433,7 @@ function renderAF(st){
             <select class="finput" style="flex:2" onchange="updRevMembre(${i},${ri},'type',this.value)">
               <option value="">Type...</option>${REVENUE_TYPES.map(rt=>`<option ${r.type===rt.id?'selected':''} value="${rt.id}">${rt.l}</option>`).join('')}
             </select>
-            <input class="finput" style="flex:1" type="number" placeholder="€" value="${r.montant||''}" onchange="updRevMembre(${i},${ri},'montant',this.value)">
+            <input class="finput" style="flex:1" type="number" placeholder="€" value="${r.montant||''}" oninput="S.form.membres[${i}].revenus[${ri}].montant=this.value">
           </div>`).join('')}
           <button class="addbtn" style="padding:6px;font-size:12px" onclick="addRevMembre(${i})">+ Revenu</button>
         </div>
@@ -443,7 +443,7 @@ function renderAF(st){
       <select class="finput" style="flex:2" onchange="updRevBen(${i},'type',this.value)">
         <option value="">Type...</option>${REVENUE_TYPES.map(rt=>`<option ${r.type===rt.id?'selected':''} value="${rt.id}">${rt.l}</option>`).join('')}
       </select>
-      <input class="finput" style="flex:1" type="number" placeholder="€" value="${r.montant||''}" onchange="updRevBen(${i},'montant',this.value)">
+      <input class="finput" style="flex:1" type="number" placeholder="€" value="${r.montant||''}" oninput="S.form.revenusBen[${i}].montant=this.value">
     </div>`).join('');
 
     return`<h2 class="ftitle">Ménage & Revenus</h2><p class="fsub">Composition du ménage selon circulaire AVIQ</p>
@@ -507,9 +507,9 @@ function renderAF(st){
     const rembFields=["MAF","Ass. hospitalisation","Forfait incontinence","Autres assurances"];
     return`<h2 class="ftitle">Charges déductibles</h2><p class="fsub">Montants annuels — frais médicaux et remboursements</p>
       <label class="flabel">Frais médico-pharmaceutiques (€/an)</label>
-      ${fraisFields.map(k=>`<div class="field"><label class="flabel">${k}</label><input class="finput" type="number" placeholder="€/an" value="${ch[k]||''}" onchange="updCharge('${k}',this.value)"></div>`).join('')}
+      ${fraisFields.map(k=>`<div class="field"><label class="flabel">${k}</label><input class="finput" type="number" placeholder="€/an" value="${ch[k]||''}" oninput="updCharge('${k}',this.value)"></div>`).join('')}
       <label class="flabel" style="margin-top:14px">Remboursements (€/an)</label>
-      ${rembFields.map(k=>`<div class="field"><label class="flabel">${k}</label><input class="finput" type="number" placeholder="€/an" value="${ch['r_'+k]||''}" onchange="updCharge('r_${k}',this.value)"></div>`).join('')}`;
+      ${rembFields.map(k=>`<div class="field"><label class="flabel">${k}</label><input class="finput" type="number" placeholder="€/an" value="${ch['r_'+k]||''}" oninput="updCharge('r_${k}',this.value)"></div>`).join('')}`;
   }
 
   if(st===7)return renderAFSummary();
@@ -562,7 +562,6 @@ function renderAFSummary(){
 
   const planItems=Object.values(f.planAide||{}).flat();
 
-  const emailBody=`Dossier SAFA AF N°${f.numDossier||'?'}%0A${f.nom} ${f.prenom}%0AAdresse: ${f.adresse||''} ${f.cp||''} ${f.localite||''}%0A%0ACode barème: ${code}%0ARevenus nets: ${revNet.toFixed(2)}€%0ACharges déductibles: ${chDed.toFixed(2)}€%0AContribution horaire: ${contrib.toFixed(2)}€%0ADéplacement (+10%%): ${depl.toFixed(2)}€%0ARéduction: -0,40€%0ACOÛT HORAIRE: ${cout.toFixed(2)}€%0A%0APlan d'aide: ${planItems.join(', ')||'—'}%0AHeures/sem: ${f.heuresSem||'—'}%0ADurée: ${f.dureeAide||'—'}`;
 
   return`
     <h2 class="ftitle">Résultat</h2><p class="fsub">Contribution financière calculée</p>
@@ -607,7 +606,6 @@ function renderAMS(st){
     <div class="field"><label class="flabel">Fréquence</label>${chips('frequence',['1x/sem','2x/sem','3x/sem','Autre'])}</div>
     ${txta('observations','Observations','État du domicile, remarques...')}`;
 
-  const emailBody=`AMS - ${f.nom||''} ${f.prenom||''}%0AAdresse: ${f.adresse||''} ${f.cp||''} ${f.localite||''}%0ATâches: ${(f.taches||[]).join(', ')}%0AFréquence: ${f.frequence||'—'}%0AObservations: ${f.observations||'—'}`;
   return`<h2 class="ftitle">Récapitulatif AMS</h2>
     <div class="ssec"><h4>Bénéficiaire</h4>
       <div class="srow"><span>Nom</span><span>${f.nom||''} ${f.prenom||''}</span></div>
@@ -638,7 +636,6 @@ function renderRepas(st){
     ${txta('obsLivraison','Observations livraison','Accès, clé, horaires...')}`;
 
   const ri=REGIMES.find(r=>r.l===f.regime);
-  const emailBody=`Repas - ${f.nom||''} ${f.prenom||''}%0AAdresse: ${f.adresse||''} ${f.cp||''} ${f.localite||''}%0ARégime: ${f.regime||'—'}%0AFréquence: ${f.frequence||'—'}%0AAllergies: ${f.allergies||'Aucune'}%0AObservations: ${f.obsLivraison||'—'}`;
   return`<h2 class="ftitle">Récapitulatif Repas</h2>
     <div class="ssec"><h4>Bénéficiaire</h4>
       <div class="srow"><span>Nom</span><span>${f.nom||''} ${f.prenom||''}</span></div>
@@ -657,34 +654,177 @@ function renderRepas(st){
 // ── EMAIL ──
 window.sendEmail=function(){
   const f=S.form;const m=S.module;
-  let subject='',body='';
+  let subject='',lines=[];
+
   if(m==='af'){
-    const totBen=(f.revenusBen||[]).reduce((s,r)=>s+(parseFloat(r.montant)||0),0);
-    const totMem=(f.membres||[]).reduce((s,mm)=>{const mr=(mm.revenus||[]).reduce((ms,r)=>ms+(parseFloat(r.montant)||0),0);return s+(mm.lien==='conjoint'?mr:mr/3)},0);
-    const totRev=totBen+totMem;
-    const ch=f.charges||{};
-    const frais=["Médecin","Hospitalisation","Infirmier","Kiné","Médicaments","Incontinence","Location matériel","Biotélévigilance"].reduce((s,k)=>s+(parseFloat(ch[k])||0),0)/12;
-    const remb=["MAF","Ass. hospitalisation","Forfait incontinence","Autres assurances"].reduce((s,k)=>s+(parseFloat(ch['r_'+k])||0),0)/12;
-    const chDed=Math.max(0,frais-remb);const revNet=Math.max(0,totRev-chDed);
-    let code=1;const hasConj=(f.membres||[]).some(mm=>mm.lien==='conjoint');
-    const benHG=f.handicap==='Reconnu'&&parseInt(f.handicapPct)>=66;
-    const enf=(f.membres||[]).filter(mm=>mm.aCharge).length;
-    if(hasConj||(benHG&&!hasConj&&enf===0))code=2;if(enf>0)code=2+enf;
-    (f.membres||[]).forEach(mm=>{if(mm.handicapGrave&&mm.lien!=='conjoint')code+=2});code=Math.max(1,code);
-    const contrib=getContrib(revNet,code);const depl=+(contrib*0.10).toFixed(2);const cout=Math.max(0,contrib+depl-0.40);
-    const planItems=Object.values(f.planAide||{}).flat();
     subject='Dossier AF - '+(f.nom||'')+' '+(f.prenom||'');
-    body='Dossier SAFA AF N°'+(f.numDossier||'?')+'\n'+(f.nom||'')+' '+(f.prenom||'')+'\nAdresse: '+(f.adresse||'')+' '+(f.cp||'')+' '+(f.localite||'')+'\n\nCode barème: '+code+'\nRevenus nets: '+revNet.toFixed(2)+'€\nCharges déductibles: '+chDed.toFixed(2)+'€\nContribution horaire: '+contrib.toFixed(2)+'€\nDéplacement (+10%): '+depl.toFixed(2)+'€\nRéduction: -0,40€\nCOÛT HORAIRE: '+cout.toFixed(2)+'€\n\nPlan d\'aide: '+(planItems.join(', ')||'—')+'\nHeures/sem: '+(f.heuresSem||'—')+'\nDurée: '+(f.dureeAide||'—');
+
+    // 1. IDENTIFICATION
+    lines.push('=== IDENTIFICATION ===');
+    lines.push('N° Dossier: '+(f.numDossier||'—'));
+    lines.push('Date visite: '+(f.dateVisite||'—'));
+    lines.push('Travailleur social: '+(f.travailleurSocial||'—'));
+    lines.push('Répond au questionnaire: '+(f.repondant||'—'));
+    lines.push('Nom: '+(f.nom||'')+' '+(f.prenom||''));
+    lines.push('Date naissance: '+(f.dateNaissance||'—'));
+    lines.push('Adresse: '+(f.adresse||'')+', '+(f.cp||'')+' '+(f.localite||''));
+    lines.push('Tel: '+(f.tel||'—')+' / GSM: '+(f.gsm||'—'));
+    lines.push('Email: '+(f.email||'—'));
+    lines.push('Sexe: '+(f.sexe||'—'));
+    lines.push('Handicap: '+(f.handicap||'—'));
+    if(f.handicap==='Reconnu'){lines.push('  Pourcentage: '+(f.handicapPct||'—'));lines.push('  Fondement: '+(f.fondement||'—'));}
+
+    // 2. MENAGE & REVENUS
+    lines.push('');
+    lines.push('=== MENAGE & REVENUS ===');
+    lines.push('Situation: '+(f.situationMenage||'—'));
+    const revTypeLabel=function(id){const t=REVENUE_TYPES.find(r=>r.id===id);return t?t.l:id};
+
+    // Revenus bénéficiaire
+    lines.push('');
+    lines.push('Revenus beneficiaire principal:');
+    let totBen=0;
+    (f.revenusBen||[]).forEach(function(r){
+      const mt=parseFloat(r.montant)||0;totBen+=mt;
+      lines.push('  - '+revTypeLabel(r.type)+': '+mt.toFixed(2)+' EUR');
+    });
+    if(!(f.revenusBen||[]).length)lines.push('  (aucun)');
+    lines.push('  TOTAL beneficiaire: '+totBen.toFixed(2)+' EUR');
+
+    // Membres
+    let totMem=0;
+    (f.membres||[]).forEach(function(mm,i){
+      lines.push('');
+      lines.push('Membre '+(i+1)+': '+(mm.nom||'')+' '+(mm.prenom||''));
+      lines.push('  Lien: '+(mm.lien||'—'));
+      lines.push('  A charge: '+(mm.aCharge?'Oui':'Non'));
+      lines.push('  Handicap grave: '+(mm.handicapGrave?'Oui':'Non'));
+      let mRev=0;
+      (mm.revenus||[]).forEach(function(r){
+        const mt=parseFloat(r.montant)||0;mRev+=mt;
+        lines.push('  - '+revTypeLabel(r.type)+': '+mt.toFixed(2)+' EUR');
+      });
+      const pris=mm.lien==='conjoint'?mRev:mRev/3;
+      totMem+=pris;
+      lines.push('  Pris en compte: '+pris.toFixed(2)+' EUR'+(mm.lien!=='conjoint'?' (1/3)':''));
+    });
+
+    const totRev=totBen+totMem;
+    lines.push('');
+    lines.push('Pension alimentaire payee: '+(f.pensionAlim||'0')+' EUR');
+    lines.push('TOTAL REVENUS MENSUELS: '+totRev.toFixed(2)+' EUR');
+
+    // 3. TYPOLOGIE
+    lines.push('');
+    lines.push('=== TYPOLOGIE ===');
+    lines.push('Sante: '+((f.sante||[]).join(', ')||'—'));
+    lines.push('Limitations autonomie: '+((f.limitations||[]).join(', ')||'—'));
+    lines.push('Changement familial: '+(f.changement||'—'));
+    lines.push('Contexte social: '+((f.contexteSocial||[]).join(', ')||'—'));
+    lines.push('Isolement: '+(f.isolement||'—'));
+
+    // 4. DEMANDE & LOGEMENT
+    lines.push('');
+    lines.push('=== DEMANDE & LOGEMENT ===');
+    lines.push('Aide consentie: '+(f.aideConsentie||'—'));
+    lines.push('Demande par: '+(f.demandePar||'—'));
+    lines.push('Cadre: '+(f.cadre||'—'));
+    lines.push('Logement: '+(f.logement||'—'));
+    lines.push('Milieu: '+(f.milieu||'—'));
+    lines.push('Logement social: '+(f.logSocial||'—'));
+    lines.push('Animaux: '+(f.animaux||'—')+(f.animaux==='Oui'?' ('+f.animauxDetail+')':''));
+    lines.push('Risques AF: '+(f.risques||'—')+(f.risques==='Oui'?' ('+f.risquesDetail+')':''));
+
+    // 5. PLAN D'AIDE
+    lines.push('');
+    lines.push('=== PLAN D\'AIDE ===');
+    lines.push('Demande du beneficiaire: '+(f.demandeFormule||'—'));
+    lines.push('Perception TS: '+(f.perceptionTS||'—'));
+    lines.push('Objectifs: '+(f.objectifs||'—'));
+    PLAN_SECTIONS.forEach(function(s){
+      const items=(f.planAide||{})[s.k]||[];
+      if(items.length)lines.push(s.t+': '+items.join(', '));
+    });
+
+    // 6. ORGANISATION
+    lines.push('');
+    lines.push('=== ORGANISATION ===');
+    lines.push('Heures/semaine: '+(f.heuresSem||'—'));
+    lines.push('Frequence: '+(f.foisSem||'—')+' fois/sem, '+(f.joursSem||'—')+' jours/sem');
+    lines.push('Heures inconfortables: '+((f.heuresInconf||[]).join(', ')||'—'));
+    lines.push('Duree aide: '+(f.dureeAide||'—'));
+    lines.push('Date debut: '+(f.dateDebut||'—'));
+    if(f.dureeAide==='Temporaire')lines.push('Date fin: '+(f.dateFin||'—'));
+    if(f.remarquesOrga)lines.push('Remarques: '+f.remarquesOrga);
+
+    // 7. CHARGES DEDUCTIBLES
+    const ch=f.charges||{};
+    const fraisKeys=["Médecin","Hospitalisation","Infirmier","Kiné","Médicaments","Incontinence","Location matériel","Biotélévigilance"];
+    const rembKeys=["MAF","Ass. hospitalisation","Forfait incontinence","Autres assurances"];
+    let totalFrais=0,totalRemb=0;
+    lines.push('');
+    lines.push('=== CHARGES DEDUCTIBLES ===');
+    lines.push('Frais medico-pharmaceutiques (annuels):');
+    fraisKeys.forEach(function(k){const v=parseFloat(ch[k])||0;totalFrais+=v;if(v)lines.push('  '+k+': '+v.toFixed(2)+' EUR/an');});
+    lines.push('  TOTAL frais: '+totalFrais.toFixed(2)+' EUR/an = '+(totalFrais/12).toFixed(2)+' EUR/mois');
+    lines.push('Remboursements (annuels):');
+    rembKeys.forEach(function(k){const v=parseFloat(ch['r_'+k])||0;totalRemb+=v;if(v)lines.push('  '+k+': '+v.toFixed(2)+' EUR/an');});
+    lines.push('  TOTAL remboursements: '+totalRemb.toFixed(2)+' EUR/an = '+(totalRemb/12).toFixed(2)+' EUR/mois');
+    const chDed=Math.max(0,totalFrais/12-totalRemb/12);
+    lines.push('CHARGES DEDUCTIBLES MENSUELLES: '+chDed.toFixed(2)+' EUR');
+
+    // 8. CALCUL CONTRIBUTION
+    const revNet=Math.max(0,totRev-chDed);
+    let code=1;const hasConj=(f.membres||[]).some(function(mm){return mm.lien==='conjoint'});
+    const benHG=f.handicap==='Reconnu'&&parseInt(f.handicapPct)>=66;
+    const enf=(f.membres||[]).filter(function(mm){return mm.aCharge}).length;
+    if(hasConj||(benHG&&!hasConj&&enf===0))code=2;if(enf>0)code=2+enf;
+    (f.membres||[]).forEach(function(mm){if(mm.handicapGrave&&mm.lien!=='conjoint')code+=2});code=Math.max(1,code);
+    const contrib=getContrib(revNet,code);const depl=+(contrib*0.10).toFixed(2);const cout=Math.max(0,contrib+depl-0.40);
+
+    lines.push('');
+    lines.push('=== CONTRIBUTION FINANCIERE ===');
+    lines.push('Revenus mensuels: '+totRev.toFixed(2)+' EUR');
+    lines.push('Charges deductibles: -'+chDed.toFixed(2)+' EUR');
+    lines.push('Revenu net: '+revNet.toFixed(2)+' EUR');
+    lines.push('Code bareme: '+code);
+    lines.push('Taux horaire: '+contrib.toFixed(2)+' EUR');
+    lines.push('Deplacement (+10%): '+depl.toFixed(2)+' EUR');
+    lines.push('Reduction art. 349: -0.40 EUR');
+    lines.push('*** COUT HORAIRE FACTURE: '+cout.toFixed(2)+' EUR ***');
+
   }else if(m==='ams'){
     subject='Dossier AMS - '+(f.nom||'')+' '+(f.prenom||'');
-    body='AMS - '+(f.nom||'')+' '+(f.prenom||'')+'\nAdresse: '+(f.adresse||'')+' '+(f.cp||'')+' '+(f.localite||'')+'\nTâches: '+((f.taches||[]).join(', '))+'\nFréquence: '+(f.frequence||'—')+'\nObservations: '+(f.observations||'—');
+    lines.push('=== DOSSIER AMS ===');
+    lines.push('Date visite: '+(f.dateVisite||'—'));
+    lines.push('Nom: '+(f.nom||'')+' '+(f.prenom||''));
+    lines.push('Adresse: '+(f.adresse||'')+', '+(f.cp||'')+' '+(f.localite||''));
+    lines.push('Telephone: '+(f.tel||'—'));
+    lines.push('');
+    lines.push('Taches: '+((f.taches||[]).join(', ')||'—'));
+    lines.push('Frequence: '+(f.frequence||'—'));
+    lines.push('');
+    lines.push('Observations: '+(f.observations||'—'));
   }else{
     subject='Dossier Repas - '+(f.nom||'')+' '+(f.prenom||'');
-    body='Repas - '+(f.nom||'')+' '+(f.prenom||'')+'\nAdresse: '+(f.adresse||'')+' '+(f.cp||'')+' '+(f.localite||'')+'\nRégime: '+(f.regime||'—')+'\nFréquence: '+(f.frequence||'—')+'\nAllergies: '+(f.allergies||'Aucune')+'\nObservations: '+(f.obsLivraison||'—');
+    lines.push('=== DOSSIER REPAS ===');
+    lines.push('Nom: '+(f.nom||'')+' '+(f.prenom||''));
+    lines.push('Date naissance: '+(f.dateNaissance||'—'));
+    lines.push('Adresse: '+(f.adresse||'')+', '+(f.cp||'')+' '+(f.localite||''));
+    lines.push('Telephone: '+(f.tel||'—'));
+    lines.push('');
+    lines.push('Regime: '+(f.regime||'—'));
+    lines.push('Frequence: '+(f.frequence||'—'));
+    lines.push('Allergies: '+(f.allergies||'Aucune'));
+    lines.push('Observations livraison: '+(f.obsLivraison||'—'));
   }
+
+  const body=lines.join('\n');
   const a=document.createElement('a');
   a.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
 };
 
 // ── INIT ──
