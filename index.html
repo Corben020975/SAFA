@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0E4A31">
+<title>SAFA Terrain</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,700;9..144,800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F4F3EE;--card:#fff;--primary:#1B6B4A;--pl:#E8F5EE;--pd:#0E4A31;--accent:#D4853A;--al:#FFF3E6;--danger:#C0392B;--dl:#FDECEA;--text:#1A1A1A;--ts:#5A6A5E;--border:#D8DDD9;--sh:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04);--shl:0 4px 24px rgba(0,0,0,.1);--r:14px;--rs:8px;--f:'DM Sans',sans-serif;--fd:'Fraunces',serif;--maf:#1B6B4A;--mams:#2E5FA1;--mrep:#B5541B}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{font-family:var(--f);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden;touch-action:manipulation}
+input,select,textarea,button{font-family:var(--f);font-size:15px}
+.app{max-width:480px;margin:0 auto;min-height:100dvh;position:relative;padding-bottom:env(safe-area-inset-bottom)}
+.screen{display:none}.screen.active{display:block}
+
+/* PIN */
+.pin-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:40px 20px;text-align:center}
+.pin-title{font-family:var(--fd);font-size:28px;color:var(--pd);margin-top:12px}
+.pin-sub{color:var(--ts);font-size:14px;margin-top:4px}
+.pin-error{color:var(--danger);font-size:13px;margin-top:8px;min-height:20px}
+.pin-dots{display:flex;gap:14px;margin:20px 0}
+.pin-dot{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--border);transition:all .2s}
+.pin-dot.filled{background:var(--primary);border-color:var(--primary);transform:scale(1.1)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px}
+.pin-key{width:72px;height:72px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);font-size:24px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;-webkit-tap-highlight-color:transparent}
+.pin-key:active{background:var(--pl);transform:scale(.94)}
+.pin-key.empty{border:none;background:transparent}
+
+/* Header */
+.header{position:sticky;top:0;z-index:100;padding:14px 20px;display:flex;align-items:center;gap:12px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:rgba(244,243,238,.85);border-bottom:1px solid var(--border)}
+.hback{width:38px;height:38px;border-radius:50%;border:none;background:var(--card);box-shadow:var(--sh);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:var(--text);-webkit-tap-highlight-color:transparent;transition:transform .12s}
+.hback:active{transform:scale(.9)}
+.htitle{font-family:var(--fd);font-size:19px;font-weight:700;flex:1}
+.badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+.badge.af{background:var(--pl);color:var(--primary)}
+.badge.ams{background:#E3EDF7;color:#2E5FA1}
+.badge.repas{background:#FFF0E3;color:#B5541B}
+
+/* Home */
+.home{padding:24px 20px}
+.logo{text-align:center;margin-bottom:32px;padding-top:16px}
+.logo h1{font-family:var(--fd);font-size:34px;color:var(--pd);letter-spacing:-1px}
+.logo p{color:var(--ts);font-size:14px;margin-top:2px}
+.lock-badge{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--ts);background:var(--pl);padding:5px 14px;border-radius:20px}
+.mcards{display:flex;flex-direction:column;gap:14px}
+.mcard{background:var(--card);border-radius:var(--r);padding:22px;box-shadow:var(--sh);cursor:pointer;border-left:5px solid;position:relative;transition:transform .12s;-webkit-tap-highlight-color:transparent}
+.mcard:active{transform:scale(.98)}
+.mcard.af{border-left-color:var(--maf)}
+.mcard.ams{border-left-color:var(--mams)}
+.mcard.repas{border-left-color:var(--mrep)}
+.mcard-icon{font-size:28px;margin-bottom:10px}
+.mcard h3{font-size:17px;font-weight:600;margin-bottom:3px}
+.mcard p{font-size:13px;color:var(--ts);line-height:1.4}
+.mcard-count{position:absolute;top:18px;right:18px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--bg)}
+
+/* List */
+.dlist{padding:16px 20px;padding-bottom:100px}
+.dempty{text-align:center;padding:60px 20px;color:var(--ts)}
+.dempty-icon{font-size:48px;margin-bottom:12px;opacity:.4}
+.ditem{background:var(--card);border-radius:var(--rs);padding:14px 16px;margin-bottom:10px;box-shadow:var(--sh);display:flex;align-items:center;gap:12px;cursor:pointer;transition:transform .12s;-webkit-tap-highlight-color:transparent}
+.ditem:active{transform:scale(.98)}
+.ditem-info{flex:1}
+.ditem-name{font-weight:600;font-size:15px}
+.ditem-date{font-size:12px;color:var(--ts);margin-top:2px}
+.ditem-del{width:34px;height:34px;border-radius:8px;border:none;background:var(--dl);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px}
+.fab{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);max-width:440px;width:calc(100% - 40px);padding:15px;border-radius:var(--r);border:none;font-size:16px;font-weight:600;color:#fff;cursor:pointer;box-shadow:var(--shl);display:flex;align-items:center;justify-content:center;gap:8px;z-index:50;-webkit-tap-highlight-color:transparent;transition:transform .12s}
+.fab:active{transform:translateX(-50%) scale(.97)}
+.fab.af{background:var(--maf)}.fab.ams{background:var(--mams)}.fab.repas{background:var(--mrep)}
+
+/* Form */
+.fview{padding:16px 20px 120px}
+.steps{display:flex;gap:4px;margin-bottom:20px}
+.sdot{flex:1;height:4px;border-radius:2px;background:var(--border);transition:background .3s}
+.sdot.active{background:var(--primary)}.sdot.done{background:var(--primary);opacity:.5}
+.ftitle{font-family:var(--fd);font-size:21px;font-weight:700;margin-bottom:4px}
+.fsub{font-size:13px;color:var(--ts);margin-bottom:18px;line-height:1.4}
+.field{margin-bottom:14px}
+.flabel{font-size:13px;font-weight:600;color:var(--ts);margin-bottom:5px;display:block}
+.finput{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:15px;background:var(--card);transition:border-color .2s;outline:none;-webkit-appearance:none;color:var(--text)}
+.finput:focus{border-color:var(--primary)}
+.finput::placeholder{color:#B0B8B2}
+.frow{display:flex;gap:10px}.frow .field{flex:1}
+.ftextarea{min-height:90px;resize:vertical}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);font-size:13px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;user-select:none}
+.chip.sel{background:var(--pl);border-color:var(--primary);color:var(--primary);font-weight:600}
+
+/* Checks */
+.clist{display:flex;flex-direction:column;gap:7px}
+.citem{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--rs);background:var(--card);border:1.5px solid var(--border);cursor:pointer;font-size:14px;transition:all .15s;-webkit-tap-highlight-color:transparent;user-select:none}
+.citem.chk{border-color:var(--primary);background:var(--pl)}
+.cbox{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;font-size:13px;color:#fff}
+.citem.chk .cbox{background:var(--primary);border-color:var(--primary)}
+
+/* Member */
+.memcard{background:var(--card);border-radius:var(--rs);border:1.5px solid var(--border);padding:14px;margin-bottom:10px}
+.memhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.memtitle{font-weight:600;font-size:14px}
+.memdel{border:none;background:none;color:var(--danger);cursor:pointer;font-size:18px;padding:4px}
+.addbtn{width:100%;padding:12px;border:2px dashed var(--border);border-radius:var(--rs);background:transparent;cursor:pointer;font-size:14px;color:var(--ts);display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.addbtn:active{border-color:var(--primary);color:var(--primary)}
+
+/* Nav */
+.fnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);max-width:480px;width:100%;padding:14px 20px;padding-bottom:calc(14px + env(safe-area-inset-bottom));background:rgba(244,243,238,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;gap:10px;z-index:50}
+.btn{flex:1;padding:13px;border-radius:var(--rs);border:none;font-size:15px;font-weight:600;cursor:pointer;transition:all .12s;-webkit-tap-highlight-color:transparent}
+.btn:active{transform:scale(.97)}
+.btn-sec{background:var(--card);color:var(--text);border:1.5px solid var(--border)}
+.btn-pri{background:var(--primary);color:#fff}
+.btn-acc{background:var(--accent);color:#fff}
+
+/* Result */
+.rcard{background:var(--card);border-radius:var(--r);padding:24px;box-shadow:var(--shl);margin-bottom:16px;text-align:center}
+.ramount{font-family:var(--fd);font-size:40px;font-weight:800;color:var(--primary)}
+.rlabel{font-size:13px;color:var(--ts);margin-top:2px}
+.rdetails{margin-top:16px;padding-top:16px;border-top:1px solid var(--border);text-align:left}
+.rrow{display:flex;justify-content:space-between;padding:5px 0;font-size:14px}
+.rrow-l{color:var(--ts)}.rrow-v{font-weight:600}
+
+/* Summary */
+.ssec{background:var(--card);border-radius:var(--rs);padding:16px;margin-bottom:12px;box-shadow:var(--sh)}
+.ssec h4{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--ts);margin-bottom:8px}
+.srow{display:flex;justify-content:space-between;padding:3px 0;font-size:14px}
+.srow span:first-child{color:var(--ts)}
+.srow span:last-child{font-weight:500}
+.stags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.stag{padding:4px 10px;border-radius:12px;font-size:12px;font-weight:500;background:var(--pl);color:var(--primary)}
+
+/* Regime cards */
+.rcards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rcard2{padding:18px 12px;border-radius:var(--r);border:2px solid var(--border);background:var(--card);cursor:pointer;text-align:center;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.rcard2.sel{border-color:var(--mrep);background:#FFF0E3}
+.rcard2-icon{font-size:28px;margin-bottom:4px}
+.rcard2-label{font-size:13px;font-weight:600}
+
+/* Export */
+.exbtn{width:100%;padding:14px;border-radius:var(--rs);border:1.5px solid var(--border);background:var(--card);cursor:pointer;font-size:14px;display:flex;align-items:center;gap:10px;transition:all .12s;margin-top:10px;-webkit-tap-highlight-color:transparent}
+.exbtn:active{transform:scale(.98)}
+
+/* Toast */
+.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:var(--rs);background:var(--pd);color:#fff;font-size:14px;font-weight:500;box-shadow:var(--shl);z-index:200;animation:toastin .3s ease,toastout .3s ease 2.2s forwards;white-space:nowrap}
+@keyframes toastin{from{opacity:0;transform:translateX(-50%) translateY(-10px)}}
+@keyframes toastout{to{opacity:0;transform:translateX(-50%) translateY(-10px)}}
+
+/* Animations */
+@keyframes fadeup{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.fadein{animation:fadeup .35s ease}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+// ── DATA ──
+const REVENUE_TYPES=[{id:"1",l:"Pension retraite/survie"},{id:"2",l:"Revenu travail"},{id:"3",l:"RIS / CPAS"},{id:"4",l:"Aucun revenu"},{id:"5",l:"Indemnité maladie/handicap/APA"},{id:"6",l:"Chômage"},{id:"7",l:"Autres réguliers (loyers, rentes)"},{id:"8",l:"Autres"}];
+const SITUATIONS=["Isolé(e)","Famille monoparentale","Couple sans enfant","Couple avec enfant(s)","Cohab. générations diff.","Cohab. mêmes générations","Autre"];
+const LIMITATIONS=["Se déplacer","Se nourrir","Hygiène personnelle","Hygiène habitat/linge","Vivre seul","Communiquer","Gestion administrative","Gestion familiale"];
+const DEMANDE_PAR=["Bénéficiaire","Famille","Médecin","Coordination","Hôpital","Mutuelle","MR","CPAS","ONE","SAJ/SPJ","AWIPH","Autres"];
+const PLAN_SECTIONS=[
+{t:"Aide vie quotidienne",k:"vie",items:["Déplacement int.","Déplacement ext.","Courses","Entretien pièces","Linge/repassage","Aide lever","Aide coucher","Surveillance sécurité"]},
+{t:"Repas",k:"repas",items:["Préparation repas","Aide prise repas","Régime alimentaire","Distribution repas"]},
+{t:"Rôle sanitaire",k:"sanit",items:["Toilette/habillement","Protection/continence","Prise médicaments","Accomp. médical"]},
+{t:"Aide relationnelle",k:"relat",items:["Identification difficultés","Soutien/dialogue","Soutien fin de vie"]},
+{t:"Rôle éducatif",k:"educ",items:["Accomp. éducatif enfant","Conseils hygiène vie","Soutien rôle éducatif","Stimulation potentialités","Aide scolaire"]},
+{t:"Aide sociale/admin.",k:"social",items:["Démarches admin./budget","Orientation services","Intégration sociale"]}
+];
+const AMS_TACHES=["Entretien sols","Nettoyage cuisine","Nettoyage sanitaires","Dépoussiérage","Vitres","Lessive","Repassage","Courses","Préparation repas","Rangement"];
+const REGIMES=[{l:"Normal",i:"🍽️"},{l:"Sans sel",i:"🧂"},{l:"Diabète",i:"💉"},{l:"Mouliné",i:"🥣"}];
+const FREQUENCES=["Semaine","Week-end","Sem. + W-E"];
+const BAREME=[
+[0,100,0,0,0],[100.01,200,.5,.5,.5],[200.01,300,.75,.5,.5],[300.01,400,1,.75,.5],
+[400.01,500,1.25,1,.75],[500.01,600,1.5,1.25,1],[600.01,700,1.75,1.5,1.25],
+[700.01,800,2,1.75,1.5],[800.01,900,2.5,2,1.75],[900.01,1000,3,2.5,2],
+[1000.01,1100,3.5,3,2.5],[1100.01,1200,4,3.5,3],[1200.01,1300,4.5,4,3.5],
+[1300.01,1400,5,4.5,4],[1400.01,1500,5.5,5,4.5],[1500.01,1600,6,5.5,5],
+[1600.01,1700,6.5,6,5.5],[1700.01,1800,7,6.5,6],[1800.01,1900,7.31,7,6.5],
+[1900.01,2000,7.81,7.31,7],[2000.01,Infinity,7.81,7.81,7.31]
+];
+
+// ── STORAGE ──
+const LS={
+  get(k){try{const d=localStorage.getItem('safa_'+k);return d?JSON.parse(d):null}catch(e){return null}},
+  set(k,v){try{localStorage.setItem('safa_'+k,JSON.stringify(v))}catch(e){}},
+  dossiers(mod){return(LS.get('dossiers')||[]).filter(d=>d.module===mod)},
+  save(d){const all=LS.get('dossiers')||[];const i=all.findIndex(x=>x.id===d.id);if(i>=0)all[i]=d;else all.push(d);LS.set('dossiers',all)},
+  del(id){LS.set('dossiers',(LS.get('dossiers')||[]).filter(d=>d.id!==id))}
+};
+
+// ── STATE ──
+let S={screen:'pin',module:null,step:0,form:{},toast:''};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+
+function getContrib(rev,code){
+  const ci=code>=3?2:code-1;
+  for(const r of BAREME)if(rev>=r[0]&&rev<=r[1])return r[2+ci];
+  return 7.81;
+}
+
+// ── RENDER ENGINE ──
+const $=id=>document.getElementById(id);
+const app=()=>document.getElementById('app');
+
+function toast(msg){
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2800);
+}
+
+function render(){
+  const s=S.screen;
+  if(s==='pin')renderPin();
+  else if(s==='home')renderHome();
+  else if(s==='list')renderList();
+  else if(s==='form')renderForm();
+  window.scrollTo(0,0);
+}
+
+// ── PIN ──
+let pinVal='';
+function renderPin(){
+  const stored=LS.get('pin');
+  const mode=stored?'unlock':'create';
+  app().innerHTML=`
+  <div class="pin-screen fadein">
+    <div style="font-size:44px">🔒</div>
+    <div class="pin-title">SAFA Terrain</div>
+    <div class="pin-sub">${mode==='create'?'Créez un code PIN à 4 chiffres':'Entrez votre code PIN'}</div>
+    <div class="pin-error" id="pinerr"></div>
+    <div class="pin-dots">${[0,1,2,3].map(i=>`<div class="pin-dot" id="pd${i}"></div>`).join('')}</div>
+    <div class="pin-pad">
+      ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="pin-key" onclick="pinKey('${n}')">${n}</button>`).join('')}
+      <div class="pin-key empty"></div>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key" onclick="pinKey('del')">⌫</button>
+    </div>
+  </div>`;
+  pinVal='';
+}
+window.pinKey=function(k){
+  if(k==='del'){pinVal=pinVal.slice(0,-1);updateDots();return}
+  if(pinVal.length>=4)return;
+  pinVal+=k;updateDots();
+  if(pinVal.length===4){
+    const stored=LS.get('pin');
+    if(!stored){LS.set('pin',pinVal);S.screen='home';render();return}
+    if(pinVal===stored){S.screen='home';render();}
+    else{$('pinerr').textContent='Code incorrect';setTimeout(()=>{pinVal='';updateDots();$('pinerr').textContent=''},800)}
+  }
+};
+function updateDots(){for(let i=0;i<4;i++){const d=$('pd'+i);if(d)d.className='pin-dot'+(i<pinVal.length?' filled':'')}}
+
+// ── HOME ──
+function renderHome(){
+  const af=LS.dossiers('af').length,ams=LS.dossiers('ams').length,rep=LS.dossiers('repas').length;
+  app().innerHTML=`
+  <div class="home fadein">
+    <div class="logo">
+      <h1>SAFA Terrain</h1>
+      <p>Enquêtes à domicile</p>
+      <div style="text-align:center"><span class="lock-badge">🔒 Données 100% locales</span></div>
+    </div>
+    <div class="mcards">
+      <div class="mcard af" onclick="openMod('af')">
+        <div class="mcard-icon">👨‍👩‍👧</div>
+        <div class="mcard-count">${af}</div>
+        <h3>Aide aux Familles</h3>
+        <p>Dossier social complet, barème AVIQ, contribution financière</p>
+      </div>
+      <div class="mcard ams" onclick="openMod('ams')">
+        <div class="mcard-icon">🏠</div>
+        <div class="mcard-count">${ams}</div>
+        <h3>Aide Ménagère Sociale</h3>
+        <p>Tâches ménagères, état du domicile, fréquence</p>
+      </div>
+      <div class="mcard repas" onclick="openMod('repas')">
+        <div class="mcard-icon">🍽️</div>
+        <div class="mcard-count">${rep}</div>
+        <h3>Repas à domicile</h3>
+        <p>Régime, fréquence, allergies</p>
+      </div>
+    </div>
+  </div>`;
+}
+window.openMod=function(m){S.module=m;S.screen='list';render()};
+
+// ── LIST ──
+function renderList(){
+  const m=S.module;
+  const ds=LS.dossiers(m);
+  const label=m==='af'?'Aide Familles':m==='ams'?'AMS':'Repas';
+  let items='';
+  if(ds.length===0)items=`<div class="dempty"><div class="dempty-icon">📋</div><p>Aucun dossier</p><p style="font-size:13px;margin-top:4px">Lancez votre première enquête</p></div>`;
+  else items=ds.map(d=>`
+    <div class="ditem" onclick="editD('${d.id}')">
+      <div class="ditem-info">
+        <div class="ditem-name">${d.nom||'Sans nom'} ${d.prenom||''}</div>
+        <div class="ditem-date">${d.updatedAt?new Date(d.updatedAt).toLocaleDateString('fr-BE'):'—'}</div>
+      </div>
+      <button class="ditem-del" onclick="event.stopPropagation();delD('${d.id}')">🗑</button>
+    </div>`).join('');
+  app().innerHTML=`
+  <div class="header">
+    <button class="hback" onclick="S.screen='home';render()">←</button>
+    <span class="htitle">${label}</span>
+    <span class="badge ${m}">${m.toUpperCase()}</span>
+  </div>
+  <div class="dlist fadein">${items}</div>
+  <button class="fab ${m}" onclick="newD()">+ Nouvelle enquête</button>`;
+}
+window.newD=function(){S.form={id:uid(),module:S.module,createdAt:new Date().toISOString()};S.step=0;S.screen='form';render()};
+window.editD=function(id){const all=LS.get('dossiers')||[];S.form=all.find(d=>d.id===id)||{};S.step=0;S.screen='form';render()};
+window.delD=function(id){if(confirm('Supprimer ce dossier ?')){LS.del(id);render()}};
+
+// ── FORM ──
+function maxSteps(){return S.module==='af'?8:3}
+
+function renderForm(){
+  const m=S.module;const st=S.step;const mx=maxSteps();
+  const label=m==='af'?'Aide Familles':m==='ams'?'AMS':'Repas';
+  const stepLabel=st<mx-1?`Étape ${st+1}/${mx-1}`:'Résultat';
+  const dots=Array.from({length:mx},(_,i)=>`<div class="sdot ${i===st?'active':i<st?'done':''}"></div>`).join('');
+
+  let content='';
+  if(m==='af')content=renderAF(st);
+  else if(m==='ams')content=renderAMS(st);
+  else content=renderRepas(st);
+
+  const prevBtn=st>0?`<button class="btn btn-sec" onclick="prevStep()">Précédent</button>`:`<button class="btn btn-sec" onclick="saveBack()">Sauvegarder</button>`;
+  const nextBtn=st<mx-1?`<button class="btn btn-pri" onclick="nextStep()">Suivant</button>`:`<button class="btn btn-acc" onclick="saveBack()">Terminer</button>`;
+
+  app().innerHTML=`
+  <div class="header">
+    <button class="hback" onclick="saveBack()">←</button>
+    <span class="htitle">${stepLabel}</span>
+    <span class="badge ${m}">${m.toUpperCase()}</span>
+  </div>
+  <div class="fview fadein"><div class="steps">${dots}</div>${content}</div>
+  <div class="fnav">${prevBtn}${nextBtn}</div>`;
+}
+
+window.nextStep=function(){syncForm();S.step++;render()};
+window.prevStep=function(){syncForm();S.step--;render()};
+window.saveBack=function(){syncForm();const d={...S.form,updatedAt:new Date().toISOString()};LS.save(d);toast('Sauvegardé ✓');S.screen='list';render()};
+
+function syncForm(){
+  document.querySelectorAll('[data-field]').forEach(el=>{
+    const k=el.dataset.field;
+    S.form[k]=el.type==='checkbox'?el.checked:el.value;
+  });
+}
+
+function inp(field,label,type='text',ph=''){
+  const v=S.form[field]||'';
+  return`<div class="field"><label class="flabel">${label}</label><input class="finput" data-field="${field}" type="${type}" value="${v}" placeholder="${ph}"></div>`;
+}
+function txta(field,label,ph=''){
+  const v=S.form[field]||'';
+  return`<div class="field"><label class="flabel">${label}</label><textarea class="finput ftextarea" data-field="${field}" placeholder="${ph}">${v}</textarea></div>`;
+}
+function chips(field,options,multi=false){
+  const cur=S.form[field];
+  const curArr=Array.isArray(cur)?cur:[];
+  return`<div class="chips">${options.map(o=>{
+    const sel=multi?curArr.includes(o):cur===o;
+    return`<div class="chip${sel?' sel':''}" onclick="toggleChip('${field}','${o}',${multi})">${o}</div>`;
+  }).join('')}</div>`;
+}
+window.toggleChip=function(field,val,multi){
+  if(multi){
+    const arr=Array.isArray(S.form[field])?[...S.form[field]]:[];
+    if(arr.includes(val))S.form[field]=arr.filter(x=>x!==val);
+    else{arr.push(val);S.form[field]=arr;}
+  }else S.form[field]=val;
+  render();
+};
+function checks(field,options){
+  const arr=Array.isArray(S.form[field])?S.form[field]:[];
+  return`<div class="clist">${options.map(o=>{
+    const chk=arr.includes(o);
+    return`<div class="citem${chk?' chk':''}" onclick="toggleChip('${field}','${o}',true)"><div class="cbox">${chk?'✓':''}</div><span>${o}</span></div>`;
+  }).join('')}</div>`;
+}
+
+// ── AF STEPS ──
+function renderAF(st){
+  const f=S.form;
+  if(st===0)return`
+    <h2 class="ftitle">Identification</h2><p class="fsub">Bénéficiaire principal</p>
+    ${inp('numDossier','N° Dossier','text','N°...')}
+    ${inp('dateVisite','Date de visite','date')}
+    ${inp('travailleurSocial','Travailleur social')}
+    <div class="field"><label class="flabel">Qui répond ?</label>${chips('repondant',['Bénéficiaire','Entourage'])}</div>
+    <div class="frow">${inp('nom','Nom')}${inp('prenom','Prénom')}</div>
+    ${inp('dateNaissance','Date de naissance','date')}
+    ${inp('adresse','Adresse','text','Rue et numéro')}
+    <div class="frow">${inp('cp','Code postal')}${inp('localite','Localité')}</div>
+    <div class="frow">${inp('tel','Téléphone','tel')}${inp('gsm','GSM','tel')}</div>
+    ${inp('email','Email','email')}
+    <div class="field"><label class="flabel">Sexe</label>${chips('sexe',['F','M'])}</div>
+    <div class="field"><label class="flabel">Handicap reconnu ?</label>${chips('handicap',['Non','Demande introduite','Reconnu'])}</div>
+    ${f.handicap==='Reconnu'?inp('handicapPct','Pourcentage','text','Ex: 66%')+`<div class="field"><label class="flabel">Fondement</label>${chips('fondement',['Fondement 1','Fondement 2'])}</div>`:''}`;
+
+  if(st===1){
+    const membres=f.membres||[];
+    let membresHtml=membres.map((m,i)=>`
+      <div class="memcard">
+        <div class="memhead"><span class="memtitle">Membre ${i+1}</span><button class="memdel" onclick="delMembre(${i})">✕</button></div>
+        <div class="frow">
+          <div class="field"><label class="flabel">Nom</label><input class="finput" value="${m.nom||''}" onchange="updMembre(${i},'nom',this.value)"></div>
+          <div class="field"><label class="flabel">Prénom</label><input class="finput" value="${m.prenom||''}" onchange="updMembre(${i},'prenom',this.value)"></div>
+        </div>
+        <div class="field"><label class="flabel">Lien</label>
+          <select class="finput" onchange="updMembre(${i},'lien',this.value)">
+            <option value="">Choisir...</option>
+            <option ${m.lien==='conjoint'?'selected':''} value="conjoint">Conjoint(e)</option>
+            <option ${m.lien==='enfant'?'selected':''} value="enfant">Enfant</option>
+            <option ${m.lien==='parent'?'selected':''} value="parent">Parent</option>
+            <option ${m.lien==='autre'?'selected':''} value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="chips" style="margin-top:6px">
+          <div class="chip${m.aCharge?' sel':''}" onclick="updMembre(${i},'aCharge',${!m.aCharge})">À charge</div>
+          <div class="chip${m.handicapGrave?' sel':''}" onclick="updMembre(${i},'handicapGrave',${!m.handicapGrave})">Handicap grave</div>
+        </div>
+        <div style="margin-top:10px">
+          <label class="flabel">Revenus</label>
+          ${(m.revenus||[]).map((r,ri)=>`<div class="frow" style="margin-bottom:6px">
+            <select class="finput" style="flex:2" onchange="updRevMembre(${i},${ri},'type',this.value)">
+              <option value="">Type...</option>${REVENUE_TYPES.map(rt=>`<option ${r.type===rt.id?'selected':''} value="${rt.id}">${rt.l}</option>`).join('')}
+            </select>
+            <input class="finput" style="flex:1" type="number" placeholder="€" value="${r.montant||''}" onchange="updRevMembre(${i},${ri},'montant',this.value)">
+          </div>`).join('')}
+          <button class="addbtn" style="padding:6px;font-size:12px" onclick="addRevMembre(${i})">+ Revenu</button>
+        </div>
+      </div>`).join('');
+
+    const revBen=(f.revenusBen||[]).map((r,i)=>`<div class="frow" style="margin-bottom:6px">
+      <select class="finput" style="flex:2" onchange="updRevBen(${i},'type',this.value)">
+        <option value="">Type...</option>${REVENUE_TYPES.map(rt=>`<option ${r.type===rt.id?'selected':''} value="${rt.id}">${rt.l}</option>`).join('')}
+      </select>
+      <input class="finput" style="flex:1" type="number" placeholder="€" value="${r.montant||''}" onchange="updRevBen(${i},'montant',this.value)">
+    </div>`).join('');
+
+    return`<h2 class="ftitle">Ménage & Revenus</h2><p class="fsub">Composition du ménage selon circulaire AVIQ</p>
+      <div class="field"><label class="flabel">Situation</label>${chips('situationMenage',SITUATIONS)}</div>
+      <div style="margin-top:14px"><label class="flabel">Membres du ménage</label>${membresHtml}
+        <button class="addbtn" onclick="addMembre()">+ Ajouter un membre</button>
+      </div>
+      <div style="margin-top:16px"><label class="flabel">Revenus du bénéficiaire principal</label>${revBen}
+        <button class="addbtn" onclick="addRevBen()">+ Revenu</button>
+      </div>
+      ${inp('pensionAlim','Pension alimentaire payée','number','€ / mois')}`;
+  }
+
+  if(st===2)return`<h2 class="ftitle">Typologie</h2><p class="fsub">Santé, autonomie, contexte social</p>
+    <div class="field"><label class="flabel">Données santé</label>${checks('sante',['Santé aigu/temporaire','Santé longue durée/chronique','Soins palliatifs','Pas de problème santé'])}</div>
+    <div class="field"><label class="flabel">Limitations d'autonomie</label>${checks('limitations',LIMITATIONS)}</div>
+    <div class="field"><label class="flabel">Changement familial</label>${chips('changement',['Décès conjoint','Séparation','Recomposition','Départ cohabitant','Aucun'])}</div>
+    <div class="field"><label class="flabel">Contexte social</label>${checks('contexteSocial',['ONE','SAJ/SPJ','CPAS','107/santé mentale','BAP','Aucun'])}</div>
+    <div class="field"><label class="flabel">Isolement</label>${chips('isolement',['< 1 visite/sem','≥ 1 visite/sem'])}</div>`;
+
+  if(st===3)return`<h2 class="ftitle">Demande & Logement</h2><p class="fsub">Contexte et environnement</p>
+    <div class="field"><label class="flabel">Aide consentie</label>${chips('aideConsentie',['Oui','Non'])}</div>
+    <div class="field"><label class="flabel">Demande par</label>${chips('demandePar',DEMANDE_PAR)}</div>
+    <div class="field"><label class="flabel">Cadre</label>${chips('cadre',['Difficultés domicile','Sortie hôpital','Retour MR','Retour institution','Autre'])}</div>
+    <div class="field"><label class="flabel">Logement</label>${chips('logement',['Maison','Appartement','Résidence service','Autre'])}</div>
+    <div class="field"><label class="flabel">Milieu</label>${chips('milieu',['Rural','Urbain'])}</div>
+    <div class="field"><label class="flabel">Logement social</label>${chips('logSocial',['Oui','Non'])}</div>
+    <div class="field"><label class="flabel">Animaux</label>${chips('animaux',['Oui','Non'])}</div>
+    ${f.animaux==='Oui'?inp('animauxDetail','Lesquels ?'):''}
+    <div class="field"><label class="flabel">Risques pour l'AF</label>${chips('risques',['Oui','Non'])}</div>
+    ${f.risques==='Oui'?txta('risquesDetail','Précisez'):''}`;
+
+  if(st===4){
+    let planHtml=PLAN_SECTIONS.map(s=>{
+      const arr=Array.isArray((f.planAide||{})[s.k])?(f.planAide||{})[s.k]:[];
+      return`<div style="margin-bottom:14px"><label class="flabel">${s.t}</label>
+        <div class="clist">${s.items.map(item=>{
+          const chk=arr.includes(item);
+          return`<div class="citem${chk?' chk':''}" onclick="togglePlan('${s.k}','${item}')"><div class="cbox">${chk?'✓':''}</div><span>${item}</span></div>`;
+        }).join('')}</div></div>`;
+    }).join('');
+    return`<h2 class="ftitle">Plan d'aide</h2><p class="fsub">Prestations et objectifs</p>
+      ${txta('demandeFormule','Demande du bénéficiaire','Description...')}
+      ${txta('perceptionTS','Perception du TS','Votre analyse...')}
+      ${txta('objectifs','Objectifs','Objectifs poursuivis...')}
+      ${planHtml}`;
+  }
+
+  if(st===5)return`<h2 class="ftitle">Organisation</h2><p class="fsub">Horaires et fréquence</p>
+    ${inp('heuresSem','Heures / semaine','number')}
+    <div class="frow">${inp('foisSem','Fois / sem','number')}${inp('joursSem','Jours / sem','number')}</div>
+    <div class="field"><label class="flabel">Heures inconfortables</label>${chips('heuresInconf',['6h-8h','18h-21h','Week-end','Non'],true)}</div>
+    <div class="field"><label class="flabel">Durée de l'aide</label>${chips('dureeAide',['Indéterminée','Temporaire'])}</div>
+    ${inp('dateDebut','Date début','date')}
+    ${f.dureeAide==='Temporaire'?inp('dateFin','Date fin','date'):''}
+    ${txta('remarquesOrga','Remarques')}`;
+
+  if(st===6){
+    const ch=f.charges||{};
+    const fraisFields=["Médecin","Hospitalisation","Infirmier","Kiné","Médicaments","Incontinence","Location matériel","Biotélévigilance"];
+    const rembFields=["MAF","Ass. hospitalisation","Forfait incontinence","Autres assurances"];
+    return`<h2 class="ftitle">Charges déductibles</h2><p class="fsub">Montants annuels — frais médicaux et remboursements</p>
+      <label class="flabel">Frais médico-pharmaceutiques (€/an)</label>
+      ${fraisFields.map(k=>`<div class="field"><label class="flabel">${k}</label><input class="finput" type="number" placeholder="€/an" value="${ch[k]||''}" onchange="updCharge('${k}',this.value)"></div>`).join('')}
+      <label class="flabel" style="margin-top:14px">Remboursements (€/an)</label>
+      ${rembFields.map(k=>`<div class="field"><label class="flabel">${k}</label><input class="finput" type="number" placeholder="€/an" value="${ch['r_'+k]||''}" onchange="updCharge('r_${k}',this.value)"></div>`).join('')}`;
+  }
+
+  if(st===7)return renderAFSummary();
+  return'';
+}
+
+// Membre helpers
+window.addMembre=function(){syncForm();S.form.membres=[...(S.form.membres||[]),{id:uid(),nom:'',prenom:'',lien:'',aCharge:false,handicapGrave:false,revenus:[]}];render()};
+window.delMembre=function(i){S.form.membres.splice(i,1);render()};
+window.updMembre=function(i,k,v){S.form.membres[i][k]=v;render()};
+window.addRevMembre=function(i){S.form.membres[i].revenus=[...(S.form.membres[i].revenus||[]),{type:'',montant:''}];render()};
+window.updRevMembre=function(i,ri,k,v){S.form.membres[i].revenus[ri][k]=v};
+window.addRevBen=function(){syncForm();S.form.revenusBen=[...(S.form.revenusBen||[]),{type:'',montant:''}];render()};
+window.updRevBen=function(i,k,v){S.form.revenusBen[i][k]=v};
+window.updCharge=function(k,v){S.form.charges={...(S.form.charges||{})};S.form.charges[k]=v};
+window.togglePlan=function(sec,item){
+  S.form.planAide=S.form.planAide||{};
+  const arr=S.form.planAide[sec]||[];
+  S.form.planAide[sec]=arr.includes(item)?arr.filter(x=>x!==item):[...arr,item];
+  render();
+};
+
+function renderAFSummary(){
+  const f=S.form;
+  const totBen=(f.revenusBen||[]).reduce((s,r)=>s+(parseFloat(r.montant)||0),0);
+  const totMem=(f.membres||[]).reduce((s,m)=>{
+    const mr=(m.revenus||[]).reduce((ms,r)=>ms+(parseFloat(r.montant)||0),0);
+    return s+(m.lien==='conjoint'?mr:mr/3);
+  },0);
+  const totRev=totBen+totMem;
+  const ch=f.charges||{};
+  const frais=["Médecin","Hospitalisation","Infirmier","Kiné","Médicaments","Incontinence","Location matériel","Biotélévigilance"].reduce((s,k)=>s+(parseFloat(ch[k])||0),0)/12;
+  const remb=["MAF","Ass. hospitalisation","Forfait incontinence","Autres assurances"].reduce((s,k)=>s+(parseFloat(ch['r_'+k])||0),0)/12;
+  const chDed=Math.max(0,frais-remb);
+  const revNet=Math.max(0,totRev-chDed);
+
+  let code=1;
+  const hasConj=(f.membres||[]).some(m=>m.lien==='conjoint');
+  const benHandGrave=f.handicap==='Reconnu'&&parseInt(f.handicapPct)>=66;
+  const enfCharge=(f.membres||[]).filter(m=>m.aCharge).length;
+  if(hasConj||(benHandGrave&&!hasConj&&enfCharge===0))code=2;
+  if(enfCharge>0)code=2+enfCharge;
+  (f.membres||[]).forEach(m=>{if(m.handicapGrave&&m.lien!=='conjoint')code+=2});
+  code=Math.max(1,code);
+
+  const contrib=getContrib(revNet,code);
+  const depl=+(contrib*0.10).toFixed(2);
+  const cout=Math.max(0,contrib+depl-0.40);
+
+  const planItems=Object.values(f.planAide||{}).flat();
+
+  const emailBody=`Dossier SAFA AF N°${f.numDossier||'?'}%0A${f.nom} ${f.prenom}%0AAdresse: ${f.adresse||''} ${f.cp||''} ${f.localite||''}%0A%0ACode barème: ${code}%0ARevenus nets: ${revNet.toFixed(2)}€%0ACharges déductibles: ${chDed.toFixed(2)}€%0AContribution horaire: ${contrib.toFixed(2)}€%0ADéplacement (+10%%): ${depl.toFixed(2)}€%0ARéduction: -0,40€%0ACOÛT HORAIRE: ${cout.toFixed(2)}€%0A%0APlan d'aide: ${planItems.join(', ')||'—'}%0AHeures/sem: ${f.heuresSem||'—'}%0ADurée: ${f.dureeAide||'—'}`;
+
+  return`
+    <h2 class="ftitle">Résultat</h2><p class="fsub">Contribution financière calculée</p>
+    <div class="rcard">
+      <div class="ramount">${cout.toFixed(2)} €</div>
+      <div class="rlabel">Coût horaire facturé</div>
+      <div class="rdetails">
+        <div class="rrow"><span class="rrow-l">Revenus mensuels</span><span class="rrow-v">${totRev.toFixed(2)} €</span></div>
+        <div class="rrow"><span class="rrow-l">Charges déductibles</span><span class="rrow-v">- ${chDed.toFixed(2)} €</span></div>
+        <div class="rrow"><span class="rrow-l">Revenu net</span><span class="rrow-v">${revNet.toFixed(2)} €</span></div>
+        <div class="rrow"><span class="rrow-l">Code barème</span><span class="rrow-v">${code}</span></div>
+        <div class="rrow"><span class="rrow-l">Taux horaire</span><span class="rrow-v">${contrib.toFixed(2)} €</span></div>
+        <div class="rrow"><span class="rrow-l">Déplacement +10%</span><span class="rrow-v">${depl.toFixed(2)} €</span></div>
+        <div class="rrow"><span class="rrow-l">Réduction art. 349</span><span class="rrow-v">- 0,40 €</span></div>
+      </div>
+    </div>
+    <div class="ssec"><h4>Bénéficiaire</h4>
+      <div class="srow"><span>Nom</span><span>${f.nom||''} ${f.prenom||''}</span></div>
+      <div class="srow"><span>Adresse</span><span>${f.cp||''} ${f.localite||''}</span></div>
+      <div class="srow"><span>Situation</span><span>${f.situationMenage||'—'}</span></div>
+    </div>
+    ${planItems.length?`<div class="ssec"><h4>Plan d'aide</h4><div class="stags">${planItems.map(p=>`<span class="stag">${p}</span>`).join('')}</div></div>`:''}
+    <div class="ssec"><h4>Organisation</h4>
+      <div class="srow"><span>Heures/sem</span><span>${f.heuresSem||'—'}</span></div>
+      <div class="srow"><span>Durée</span><span>${f.dureeAide||'—'}</span></div>
+    </div>
+    <button class="exbtn" onclick="window.open('mailto:?subject=Dossier AF - ${f.nom||''} ${f.prenom||''}&body=${emailBody}')">
+      <span style="font-size:20px">📧</span><span>Envoyer par email</span>
+    </button>`;
+}
+
+// ── AMS ──
+function renderAMS(st){
+  const f=S.form;
+  if(st===0)return`<h2 class="ftitle">Identification</h2><p class="fsub">Bénéficiaire AMS</p>
+    <div class="frow">${inp('nom','Nom')}${inp('prenom','Prénom')}</div>
+    ${inp('adresse','Adresse')}
+    <div class="frow">${inp('cp','CP')}${inp('localite','Localité')}</div>
+    ${inp('tel','Téléphone','tel')}${inp('dateVisite','Date de visite','date')}`;
+  if(st===1)return`<h2 class="ftitle">Tâches & Observations</h2><p class="fsub">Grille de travail</p>
+    <div class="field"><label class="flabel">Tâches</label>${checks('taches',AMS_TACHES)}</div>
+    <div class="field"><label class="flabel">Fréquence</label>${chips('frequence',['1x/sem','2x/sem','3x/sem','Autre'])}</div>
+    ${txta('observations','Observations','État du domicile, remarques...')}`;
+
+  const emailBody=`AMS - ${f.nom||''} ${f.prenom||''}%0AAdresse: ${f.adresse||''} ${f.cp||''} ${f.localite||''}%0ATâches: ${(f.taches||[]).join(', ')}%0AFréquence: ${f.frequence||'—'}%0AObservations: ${f.observations||'—'}`;
+  return`<h2 class="ftitle">Récapitulatif AMS</h2>
+    <div class="ssec"><h4>Bénéficiaire</h4>
+      <div class="srow"><span>Nom</span><span>${f.nom||''} ${f.prenom||''}</span></div>
+      <div class="srow"><span>Fréquence</span><span>${f.frequence||'—'}</span></div>
+    </div>
+    ${(f.taches||[]).length?`<div class="ssec"><h4>Tâches</h4><div class="stags">${(f.taches||[]).map(t=>`<span class="stag">${t}</span>`).join('')}</div></div>`:''}
+    ${f.observations?`<div class="ssec"><h4>Observations</h4><p style="font-size:14px;line-height:1.5">${f.observations}</p></div>`:''}
+    <button class="exbtn" onclick="window.open('mailto:?subject=Dossier AMS - ${f.nom||''} ${f.prenom||''}&body=${emailBody}')">
+      <span style="font-size:20px">📧</span><span>Envoyer par email</span>
+    </button>`;
+}
+
+// ── REPAS ──
+function renderRepas(st){
+  const f=S.form;
+  if(st===0)return`<h2 class="ftitle">Identification</h2><p class="fsub">Bénéficiaire repas</p>
+    <div class="frow">${inp('nom','Nom')}${inp('prenom','Prénom')}</div>
+    ${inp('adresse','Adresse')}
+    <div class="frow">${inp('cp','CP')}${inp('localite','Localité')}</div>
+    ${inp('tel','Téléphone','tel')}${inp('dateNaissance','Date de naissance','date')}`;
+  if(st===1)return`<h2 class="ftitle">Régime & Fréquence</h2><p class="fsub">Type de repas et planning</p>
+    <div class="field"><label class="flabel">Type de régime</label>
+      <div class="rcards">${REGIMES.map(r=>`<div class="rcard2${f.regime===r.l?' sel':''}" onclick="S.form.regime='${r.l}';render()">
+        <div class="rcard2-icon">${r.i}</div><div class="rcard2-label">${r.l}</div></div>`).join('')}</div>
+    </div>
+    <div class="field"><label class="flabel">Fréquence</label>${chips('frequence',FREQUENCES)}</div>
+    ${txta('allergies','Allergies / Intolérances','Précisez...')}
+    ${txta('obsLivraison','Observations livraison','Accès, clé, horaires...')}`;
+
+  const ri=REGIMES.find(r=>r.l===f.regime);
+  const emailBody=`Repas - ${f.nom||''} ${f.prenom||''}%0AAdresse: ${f.adresse||''} ${f.cp||''} ${f.localite||''}%0ARégime: ${f.regime||'—'}%0AFréquence: ${f.frequence||'—'}%0AAllergies: ${f.allergies||'Aucune'}%0AObservations: ${f.obsLivraison||'—'}`;
+  return`<h2 class="ftitle">Récapitulatif Repas</h2>
+    <div class="ssec"><h4>Bénéficiaire</h4>
+      <div class="srow"><span>Nom</span><span>${f.nom||''} ${f.prenom||''}</span></div>
+      <div class="srow"><span>Adresse</span><span>${f.cp||''} ${f.localite||''}</span></div>
+    </div>
+    <div class="ssec"><h4>Repas</h4>
+      <div class="srow"><span>Régime</span><span>${ri?ri.i+' ':''} ${f.regime||'—'}</span></div>
+      <div class="srow"><span>Fréquence</span><span>${f.frequence||'—'}</span></div>
+      ${f.allergies?`<div class="srow"><span>Allergies</span><span>${f.allergies}</span></div>`:''}
+    </div>
+    <button class="exbtn" onclick="window.open('mailto:?subject=Dossier Repas - ${f.nom||''} ${f.prenom||''}&body=${emailBody}')">
+      <span style="font-size:20px">📧</span><span>Envoyer par email</span>
+    </button>`;
+}
+
+// ── INIT ──
+render();
+</script>
+</body>
+</html>

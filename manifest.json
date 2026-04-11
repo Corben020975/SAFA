@@ -1,0 +1,17 @@
+{
+  "name": "SAFA Terrain",
+  "short_name": "SAFA",
+  "description": "Enquêtes à domicile - AF, AMS, Repas",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F4F3EE",
+  "theme_color": "#0E4A31",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230E4A31'/><text x='50' y='65' text-anchor='middle' font-size='40'>🏠</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
