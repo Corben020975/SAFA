@@ -207,33 +207,102 @@ if(m==='af'){var r=cF(f);L.push('========================================');L.pu
 }else{L.push('=== DOSSIER REPAS A DOMICILE ===');L.push('Nom: '+(f.nom||'')+' '+(f.prenom||''));L.push('Date naissance: '+(f.dateNaissance||'—'));L.push('Adresse: '+(f.adresse||'')+', '+(f.cp||'')+' '+(f.localite||''));L.push('Tel: '+(f.tel||'—'));L.push('Contact urgence: '+(f.contactUrgence||'—'));L.push('');L.push('Regime: '+(f.regime||'—'));L.push('Jours: '+((f.joursLivraison||[]).join(', ')||'—'));L.push('Repas/jour: '+(f.nbRepasJour||'—'));L.push('Allergies: '+(f.allergies||'Aucune'));L.push('');L.push('Observations: '+(f.obsLivraison||'—'));L.push('Remarques: '+(f.remarquesRepas||'—'))}
 var sub=(m==='af'?'Dossier AF':m==='ams'?'Dossier AMS':'Dossier Repas')+' - '+(f.nom||'')+' '+(f.prenom||'');
 var a=document.createElement('a');a.href='mailto:?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(L.join('\n'));document.body.appendChild(a);a.click();document.body.removeChild(a)};
-// ── CSV EXPORT (100% local, zero network) ──
-function csvEsc(v){v=String(v||'').replace(/"/g,'""');if(v.indexOf(',')>=0||v.indexOf('"')>=0||v.indexOf('\n')>=0)v='"'+v+'"';return v}
+// ── EXCEL EXPORT (100% local, zero network) ──
+function xEsc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function xCell(v,style){return '<td style="'+style+'">'+xEsc(v)+'</td>'}
+function xNum(v,style){var n=parseFloat(v);return '<td style="'+style+'">'+(isNaN(n)?'—':n.toFixed(2))+'</td>'}
+function xHdr(v,bg,w){return '<td style="background:'+bg+';color:#fff;font-weight:bold;font-size:11pt;padding:8px 12px;border:1px solid #fff;white-space:nowrap;'+(w?'width:'+w+'px;':'')+'">'+xEsc(v)+'</td>'}
+function xSec(v,colspan){return '<tr><td colspan="'+colspan+'" style="background:#2C3E50;color:#fff;font-weight:bold;font-size:12pt;padding:10px 12px;border:none;">'+xEsc(v)+'</td></tr>'}
+var ODD='background:#F8F9FA;';var EVEN='background:#FFFFFF;';var CELL='padding:6px 10px;border:1px solid #DEE2E6;font-size:10pt;vertical-align:top;';var NUMCELL='padding:6px 10px;border:1px solid #DEE2E6;font-size:10pt;text-align:right;font-family:Consolas,monospace;';
+
 window.expCSV=function(){
   var m=S.module;var ds=LS.ds(m);if(!ds.length){toast('Aucun dossier');return}
-  var rows=[],hdr=[];
+  var title=m==='af'?'AIDE AUX FAMILLES':m==='ams'?'AIDE MÉNAGÈRE SOCIALE':'REPAS À DOMICILE';
+  var date=new Date().toLocaleDateString('fr-BE');
+  var hdrColor=m==='af'?'#1B6B4A':m==='ams'?'#2E5FA1':'#B5541B';
+  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>'+title+'</x:Name><x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>3</x:SplitHorizontal><x:TopRowBottomPane>3</x:TopRowBottomPane></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="0" cellpadding="0" cellspacing="0">';
+
+  // Title row
+  html+='<tr><td colspan="50" style="background:'+hdrColor+';color:#fff;font-size:16pt;font-weight:bold;padding:14px 16px;font-family:Arial;">SAFA Terrain — '+title+'</td></tr>';
+
   if(m==='af'){
-    hdr=['N° Dossier','Date visite','Travailleur social','Nom','Prénom','Date naissance','Adresse','CP','Localité','Téléphone','GSM','Email','Sexe','Handicap','% Handicap','Fondement','Situation ménage','Revenus bénéficiaire (EUR)','Revenus membres (EUR)','Total revenus (EUR)','Pension alim. (EUR)','Charges déductibles (EUR/mois)','Revenu net (EUR)','Code barème','Taux horaire (EUR)','Déplacement (EUR)','Coût horaire (EUR)','Santé','Limitations','Changement familial','Contexte social','Isolement','Aide consentie','Demande par','Cadre','Logement','Milieu','Plan aide','Heures/sem','Fréquence','Durée','Date début','Remarques'];
-    ds.forEach(function(f){
-      var r=cF(f);var pi=[];for(var k in (f.planAide||{}))(f.planAide[k]||[]).forEach(function(x){pi.push(x)});
-      rows.push([f.numDossier,f.dateVisite,f.travailleurSocial,f.nom,f.prenom,f.dateNaissance,f.adresse,f.cp,f.localite,f.tel,f.gsm,f.email,f.sexe,f.handicap,f.handicapPct,f.fondement,f.situationMenage,r.tb.toFixed(2),r.tm.toFixed(2),r.tr.toFixed(2),r.pa.toFixed(2),r.cd.toFixed(2),r.rn.toFixed(2),r.code,r.co.toFixed(2),r.dp.toFixed(2),r.ct.toFixed(2),(f.sante||[]).join(' / '),(f.limitations||[]).join(' / '),f.changement,(f.contexteSocial||[]).join(' / '),f.isolement,f.aideConsentie,f.demandePar,f.cadre,f.logement,f.milieu,pi.join(' / '),f.heuresSem,(f.foisSem||'')+' fois/sem',f.dureeAide,f.dateDebut,f.remarquesOrga]);
+    // Subtitle
+    html+='<tr><td colspan="50" style="background:#ECF0F1;color:#555;font-size:9pt;padding:6px 16px;">Exporté le '+date+' — '+ds.length+' dossier(s) — Données confidentielles</td></tr>';
+
+    // ── HEADER ROW ──
+    html+='<tr>';
+    // Identification (7 cols)
+    html+=xHdr('N° Dossier',hdrColor,'90')+xHdr('Nom',hdrColor,'120')+xHdr('Prénom',hdrColor,'120')+xHdr('Date naiss.',hdrColor,'100')+xHdr('Adresse',hdrColor,'200')+xHdr('CP',hdrColor,'60')+xHdr('Localité',hdrColor,'120');
+    // Contact (3 cols)
+    html+=xHdr('Tél',hdrColor,'110')+xHdr('GSM',hdrColor,'110')+xHdr('Email',hdrColor,'160');
+    // Handicap (3 cols)
+    html+=xHdr('Sexe',hdrColor,'50')+xHdr('Handicap',hdrColor,'100')+xHdr('% / Fond.',hdrColor,'80');
+    // Ménage (2 cols)
+    html+=xHdr('Situation ménage',hdrColor,'150')+xHdr('Nbre membres',hdrColor,'60');
+    // Financier (8 cols)
+    html+=xHdr('Rev. bénéf. €',hdrColor,'100')+xHdr('Rev. membres €',hdrColor,'100')+xHdr('Total rev. €',hdrColor,'100')+xHdr('Pension alim. €',hdrColor,'100')+xHdr('Charges déd. €',hdrColor,'100')+xHdr('Rev. net €',hdrColor,'100')+xHdr('Code barème',hdrColor,'70')+xHdr('COÛT HORAIRE €',hdrColor,'110');
+    // Typologie (5 cols)
+    html+=xHdr('Santé',hdrColor,'180')+xHdr('Limitations',hdrColor,'200')+xHdr('Isolement',hdrColor,'100')+xHdr('Contexte social',hdrColor,'150')+xHdr('Changement',hdrColor,'120');
+    // Demande (4 cols)
+    html+=xHdr('Demande par',hdrColor,'100')+xHdr('Cadre',hdrColor,'120')+xHdr('Logement',hdrColor,'100')+xHdr('Milieu',hdrColor,'60');
+    // Plan d'aide (1 col)
+    html+=xHdr('Plan d\'aide',hdrColor,'300');
+    // Organisation (4 cols)
+    html+=xHdr('Heures/sem',hdrColor,'70')+xHdr('Fréquence',hdrColor,'80')+xHdr('Durée',hdrColor,'100')+xHdr('Date début',hdrColor,'100');
+    // Meta (2 cols)
+    html+=xHdr('Date visite',hdrColor,'100')+xHdr('Travailleur social',hdrColor,'140');
+    html+='</tr>';
+
+    // ── DATA ROWS ──
+    ds.forEach(function(f,idx){
+      var bg=idx%2===0?ODD:EVEN;var c=CELL+bg;var n=NUMCELL+bg;
+      var r=cF(f);
+      var pi=[];for(var k in (f.planAide||{}))(f.planAide[k]||[]).forEach(function(x){pi.push(x)});
+      var hInfo=f.handicap==='Reconnu'?(f.handicapPct||'?')+'% '+(f.fondement||''):(f.handicap||'—');
+      // Highlight row for high cost
+      var costStyle=n;if(r.ct>=6)costStyle=NUMCELL+bg+'background:#FDECEA;font-weight:bold;color:#C0392B;';else if(r.ct>=4)costStyle=NUMCELL+bg+'background:#FFF3E6;font-weight:bold;color:#B5541B;';
+      html+='<tr>';
+      html+=xCell(f.numDossier,c)+xCell(f.nom,c+'font-weight:bold;')+xCell(f.prenom,c)+xCell(f.dateNaissance,c)+xCell(f.adresse,c)+xCell(f.cp,c)+xCell(f.localite,c);
+      html+=xCell(f.tel,c)+xCell(f.gsm,c)+xCell(f.email,c);
+      html+=xCell(f.sexe,c+'text-align:center;')+xCell(f.handicap,c)+xCell(hInfo,c);
+      html+=xCell(f.situationMenage,c)+xCell((f.membres||[]).length,c+'text-align:center;');
+      html+=xNum(r.tb,n)+xNum(r.tm,n)+xNum(r.tr,n+'font-weight:bold;')+xNum(r.pa,n)+xNum(r.cd,n)+xNum(r.rn,n+'font-weight:bold;')+xCell(r.code,c+'text-align:center;font-weight:bold;font-size:12pt;')+xNum(r.ct,costStyle);
+      html+=xCell((f.sante||[]).join(', '),c)+xCell((f.limitations||[]).join(', '),c)+xCell(f.isolement,c)+xCell((f.contexteSocial||[]).join(', '),c)+xCell(f.changement,c);
+      html+=xCell(f.demandePar,c)+xCell(f.cadre,c)+xCell(f.logement,c)+xCell(f.milieu,c);
+      html+=xCell(pi.join(', '),c);
+      html+=xCell(f.heuresSem,c+'text-align:center;')+xCell((f.foisSem||'')+'x/sem',c)+xCell(f.dureeAide,c)+xCell(f.dateDebut,c);
+      html+=xCell(f.dateVisite,c)+xCell(f.travailleurSocial,c);
+      html+='</tr>';
     });
   }else if(m==='ams'){
-    hdr=['Date visite','Nom','Prénom','Adresse','CP','Localité','Téléphone','Tâches','Fréquence','Observations'];
-    ds.forEach(function(f){rows.push([f.dateVisite,f.nom,f.prenom,f.adresse,f.cp,f.localite,f.tel,(f.taches||[]).join(' / '),f.frequence,f.observations])});
+    html+='<tr><td colspan="10" style="background:#ECF0F1;color:#555;font-size:9pt;padding:6px 16px;">Exporté le '+date+' — '+ds.length+' dossier(s)</td></tr>';
+    html+='<tr>';
+    html+=xHdr('Date visite',hdrColor,'100')+xHdr('Nom',hdrColor,'140')+xHdr('Prénom',hdrColor,'120')+xHdr('Adresse',hdrColor,'220')+xHdr('CP',hdrColor,'60')+xHdr('Localité',hdrColor,'130')+xHdr('Téléphone',hdrColor,'120')+xHdr('Tâches réalisées',hdrColor,'350')+xHdr('Fréquence',hdrColor,'90')+xHdr('Observations',hdrColor,'350');
+    html+='</tr>';
+    ds.forEach(function(f,idx){
+      var bg=idx%2===0?ODD:EVEN;var c=CELL+bg;
+      html+='<tr>'+xCell(f.dateVisite,c)+xCell(f.nom,c+'font-weight:bold;')+xCell(f.prenom,c)+xCell(f.adresse,c)+xCell(f.cp,c)+xCell(f.localite,c)+xCell(f.tel,c)+xCell((f.taches||[]).join(', '),c)+xCell(f.frequence,c+'text-align:center;')+xCell(f.observations,c)+'</tr>';
+    });
   }else{
-    hdr=['Nom','Prénom','Date naissance','Adresse','CP','Localité','Téléphone','Contact urgence','Régime','Jours livraison','Repas/jour','Allergies','Observations livraison','Remarques'];
-    ds.forEach(function(f){rows.push([f.nom,f.prenom,f.dateNaissance,f.adresse,f.cp,f.localite,f.tel,f.contactUrgence,f.regime,(f.joursLivraison||[]).join(' / '),f.nbRepasJour,f.allergies,f.obsLivraison,f.remarquesRepas])});
+    html+='<tr><td colspan="14" style="background:#ECF0F1;color:#555;font-size:9pt;padding:6px 16px;">Exporté le '+date+' — '+ds.length+' dossier(s)</td></tr>';
+    html+='<tr>';
+    html+=xHdr('Nom',hdrColor,'140')+xHdr('Prénom',hdrColor,'120')+xHdr('Date naiss.',hdrColor,'100')+xHdr('Adresse',hdrColor,'220')+xHdr('CP',hdrColor,'60')+xHdr('Localité',hdrColor,'130')+xHdr('Téléphone',hdrColor,'120')+xHdr('Contact urgence',hdrColor,'160')+xHdr('Régime',hdrColor,'90')+xHdr('Jours livraison',hdrColor,'180')+xHdr('Repas/jour',hdrColor,'70')+xHdr('Allergies',hdrColor,'200')+xHdr('Obs. livraison',hdrColor,'250')+xHdr('Remarques',hdrColor,'250');
+    html+='</tr>';
+    ds.forEach(function(f,idx){
+      var bg=idx%2===0?ODD:EVEN;var c=CELL+bg;
+      var regIcon=f.regime==='Diabète'?'⚠️ ':'';
+      html+='<tr>'+xCell(f.nom,c+'font-weight:bold;')+xCell(f.prenom,c)+xCell(f.dateNaissance,c)+xCell(f.adresse,c)+xCell(f.cp,c)+xCell(f.localite,c)+xCell(f.tel,c)+xCell(f.contactUrgence,c)+xCell(regIcon+(f.regime||'—'),c+'text-align:center;font-weight:bold;')+xCell((f.joursLivraison||[]).join(', '),c)+xCell(f.nbRepasJour,c+'text-align:center;')+xCell(f.allergies,c+(f.allergies?'background:#FDECEA;color:#C0392B;font-weight:bold;':''))+xCell(f.obsLivraison,c)+xCell(f.remarquesRepas,c)+'</tr>';
+    });
   }
-  var csv='\uFEFF'+hdr.map(csvEsc).join(',')+'\n';
-  rows.forEach(function(row){csv+=row.map(csvEsc).join(',')+'\n'});
-  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+
+  html+='</table></body></html>';
+  var blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8;'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
-  a.href=url;a.download='SAFA_'+m.toUpperCase()+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.href=url;a.download='SAFA_'+m.toUpperCase()+'_'+new Date().toISOString().slice(0,10)+'.xls';
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast('Tableau exporté ✓');
+  toast('Tableau Excel exporté ✓');
 };
 render();
 </script>
