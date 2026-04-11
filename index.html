@@ -296,14 +296,17 @@ window.expCSV=function(){
   }
 
   html+='</table></body></html>';
+  var fname='SAFA_'+m.toUpperCase()+'_'+new Date().toISOString().slice(0,10)+'.xls';
   var blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8;'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url;a.download='SAFA_'+m.toUpperCase()+'_'+new Date().toISOString().slice(0,10)+'.xls';
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  toast('Tableau Excel exporté ✓');
+  var file=new File([blob],fname,{type:'application/vnd.ms-excel'});
+  // Try native share (works on Android Chrome)
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({title:'SAFA - Tableau '+m.toUpperCase(),files:[file]}).then(function(){toast('Partagé ✓')}).catch(function(){dlFile(blob,fname)});
+  }else{dlFile(blob,fname)}
 };
+function dlFile(blob,fname){
+  var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);toast('Tableau exporté ✓');
+}
 render();
 </script>
 </body>
