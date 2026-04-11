@@ -589,7 +589,7 @@ function renderAFSummary(){
       <div class="srow"><span>Heures/sem</span><span>${f.heuresSem||'—'}</span></div>
       <div class="srow"><span>Durée</span><span>${f.dureeAide||'—'}</span></div>
     </div>
-    <button class="exbtn" onclick="window.location.href='mailto:?subject=Dossier AF - ${f.nom||''} ${f.prenom||''}&body=${emailBody}'">
+    <button class="exbtn" onclick="sendEmail()">
       <span style="font-size:20px">📧</span><span>Envoyer par email</span>
     </button>`;
 }
@@ -615,7 +615,7 @@ function renderAMS(st){
     </div>
     ${(f.taches||[]).length?`<div class="ssec"><h4>Tâches</h4><div class="stags">${(f.taches||[]).map(t=>`<span class="stag">${t}</span>`).join('')}</div></div>`:''}
     ${f.observations?`<div class="ssec"><h4>Observations</h4><p style="font-size:14px;line-height:1.5">${f.observations}</p></div>`:''}
-    <button class="exbtn" onclick="window.location.href='mailto:?subject=Dossier AMS - ${f.nom||''} ${f.prenom||''}&body=${emailBody}'">
+    <button class="exbtn" onclick="sendEmail()">
       <span style="font-size:20px">📧</span><span>Envoyer par email</span>
     </button>`;
 }
@@ -649,10 +649,43 @@ function renderRepas(st){
       <div class="srow"><span>Fréquence</span><span>${f.frequence||'—'}</span></div>
       ${f.allergies?`<div class="srow"><span>Allergies</span><span>${f.allergies}</span></div>`:''}
     </div>
-    <button class="exbtn" onclick="window.location.href='mailto:?subject=Dossier Repas - ${f.nom||''} ${f.prenom||''}&body=${emailBody}'">
+    <button class="exbtn" onclick="sendEmail()">
       <span style="font-size:20px">📧</span><span>Envoyer par email</span>
     </button>`;
 }
+
+// ── EMAIL ──
+window.sendEmail=function(){
+  const f=S.form;const m=S.module;
+  let subject='',body='';
+  if(m==='af'){
+    const totBen=(f.revenusBen||[]).reduce((s,r)=>s+(parseFloat(r.montant)||0),0);
+    const totMem=(f.membres||[]).reduce((s,mm)=>{const mr=(mm.revenus||[]).reduce((ms,r)=>ms+(parseFloat(r.montant)||0),0);return s+(mm.lien==='conjoint'?mr:mr/3)},0);
+    const totRev=totBen+totMem;
+    const ch=f.charges||{};
+    const frais=["Médecin","Hospitalisation","Infirmier","Kiné","Médicaments","Incontinence","Location matériel","Biotélévigilance"].reduce((s,k)=>s+(parseFloat(ch[k])||0),0)/12;
+    const remb=["MAF","Ass. hospitalisation","Forfait incontinence","Autres assurances"].reduce((s,k)=>s+(parseFloat(ch['r_'+k])||0),0)/12;
+    const chDed=Math.max(0,frais-remb);const revNet=Math.max(0,totRev-chDed);
+    let code=1;const hasConj=(f.membres||[]).some(mm=>mm.lien==='conjoint');
+    const benHG=f.handicap==='Reconnu'&&parseInt(f.handicapPct)>=66;
+    const enf=(f.membres||[]).filter(mm=>mm.aCharge).length;
+    if(hasConj||(benHG&&!hasConj&&enf===0))code=2;if(enf>0)code=2+enf;
+    (f.membres||[]).forEach(mm=>{if(mm.handicapGrave&&mm.lien!=='conjoint')code+=2});code=Math.max(1,code);
+    const contrib=getContrib(revNet,code);const depl=+(contrib*0.10).toFixed(2);const cout=Math.max(0,contrib+depl-0.40);
+    const planItems=Object.values(f.planAide||{}).flat();
+    subject='Dossier AF - '+(f.nom||'')+' '+(f.prenom||'');
+    body='Dossier SAFA AF N°'+(f.numDossier||'?')+'\n'+(f.nom||'')+' '+(f.prenom||'')+'\nAdresse: '+(f.adresse||'')+' '+(f.cp||'')+' '+(f.localite||'')+'\n\nCode barème: '+code+'\nRevenus nets: '+revNet.toFixed(2)+'€\nCharges déductibles: '+chDed.toFixed(2)+'€\nContribution horaire: '+contrib.toFixed(2)+'€\nDéplacement (+10%): '+depl.toFixed(2)+'€\nRéduction: -0,40€\nCOÛT HORAIRE: '+cout.toFixed(2)+'€\n\nPlan d\'aide: '+(planItems.join(', ')||'—')+'\nHeures/sem: '+(f.heuresSem||'—')+'\nDurée: '+(f.dureeAide||'—');
+  }else if(m==='ams'){
+    subject='Dossier AMS - '+(f.nom||'')+' '+(f.prenom||'');
+    body='AMS - '+(f.nom||'')+' '+(f.prenom||'')+'\nAdresse: '+(f.adresse||'')+' '+(f.cp||'')+' '+(f.localite||'')+'\nTâches: '+((f.taches||[]).join(', '))+'\nFréquence: '+(f.frequence||'—')+'\nObservations: '+(f.observations||'—');
+  }else{
+    subject='Dossier Repas - '+(f.nom||'')+' '+(f.prenom||'');
+    body='Repas - '+(f.nom||'')+' '+(f.prenom||'')+'\nAdresse: '+(f.adresse||'')+' '+(f.cp||'')+' '+(f.localite||'')+'\nRégime: '+(f.regime||'—')+'\nFréquence: '+(f.frequence||'—')+'\nAllergies: '+(f.allergies||'Aucune')+'\nObservations: '+(f.obsLivraison||'—');
+  }
+  const a=document.createElement('a');
+  a.href='mailto:?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  a.click();
+};
 
 // ── INIT ──
 render();
