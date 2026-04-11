@@ -356,11 +356,11 @@ function syncForm(){
 
 function inp(field,label,type='text',ph=''){
   const v=S.form[field]||'';
-  return`<div class="field"><label class="flabel">${label}</label><input class="finput" data-field="${field}" type="${type}" value="${v}" placeholder="${ph}"></div>`;
+  return`<div class="field"><label class="flabel">${label}</label><input class="finput" data-field="${field}" type="${type}" value="${v}" placeholder="${ph}" oninput="S.form['${field}']=this.value"></div>`;
 }
 function txta(field,label,ph=''){
   const v=S.form[field]||'';
-  return`<div class="field"><label class="flabel">${label}</label><textarea class="finput ftextarea" data-field="${field}" placeholder="${ph}">${v}</textarea></div>`;
+  return`<div class="field"><label class="flabel">${label}</label><textarea class="finput ftextarea" data-field="${field}" placeholder="${ph}" oninput="S.form['${field}']=this.value">${v}</textarea></div>`;
 }
 function chips(field,options,multi=false){
   const cur=S.form[field];
@@ -371,6 +371,7 @@ function chips(field,options,multi=false){
   }).join('')}</div>`;
 }
 window.toggleChip=function(field,val,multi){
+  syncForm();
   if(multi){
     const arr=Array.isArray(S.form[field])?[...S.form[field]]:[];
     if(arr.includes(val))S.form[field]=arr.filter(x=>x!==val);
@@ -518,14 +519,15 @@ function renderAF(st){
 
 // Membre helpers
 window.addMembre=function(){syncForm();S.form.membres=[...(S.form.membres||[]),{id:uid(),nom:'',prenom:'',lien:'',aCharge:false,handicapGrave:false,revenus:[]}];render()};
-window.delMembre=function(i){S.form.membres.splice(i,1);render()};
-window.updMembre=function(i,k,v){S.form.membres[i][k]=v;render()};
-window.addRevMembre=function(i){S.form.membres[i].revenus=[...(S.form.membres[i].revenus||[]),{type:'',montant:''}];render()};
+window.delMembre=function(i){syncForm();S.form.membres.splice(i,1);render()};
+window.updMembre=function(i,k,v){syncForm();S.form.membres[i][k]=v;render()};
+window.addRevMembre=function(i){syncForm();S.form.membres[i].revenus=[...(S.form.membres[i].revenus||[]),{type:'',montant:''}];render()};
 window.updRevMembre=function(i,ri,k,v){S.form.membres[i].revenus[ri][k]=v};
 window.addRevBen=function(){syncForm();S.form.revenusBen=[...(S.form.revenusBen||[]),{type:'',montant:''}];render()};
 window.updRevBen=function(i,k,v){S.form.revenusBen[i][k]=v};
 window.updCharge=function(k,v){S.form.charges={...(S.form.charges||{})};S.form.charges[k]=v};
 window.togglePlan=function(sec,item){
+  syncForm();
   S.form.planAide=S.form.planAide||{};
   const arr=S.form.planAide[sec]||[];
   S.form.planAide[sec]=arr.includes(item)?arr.filter(x=>x!==item):[...arr,item];
@@ -629,7 +631,7 @@ function renderRepas(st){
     ${inp('tel','Téléphone','tel')}${inp('dateNaissance','Date de naissance','date')}`;
   if(st===1)return`<h2 class="ftitle">Régime & Fréquence</h2><p class="fsub">Type de repas et planning</p>
     <div class="field"><label class="flabel">Type de régime</label>
-      <div class="rcards">${REGIMES.map(r=>`<div class="rcard2${f.regime===r.l?' sel':''}" onclick="S.form.regime='${r.l}';render()">
+      <div class="rcards">${REGIMES.map(r=>`<div class="rcard2${f.regime===r.l?' sel':''}" onclick="syncForm();S.form.regime='${r.l}';render()">
         <div class="rcard2-icon">${r.i}</div><div class="rcard2-label">${r.l}</div></div>`).join('')}</div>
     </div>
     <div class="field"><label class="flabel">Fréquence</label>${chips('frequence',FREQUENCES)}</div>
