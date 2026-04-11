@@ -217,7 +217,6 @@ function render(){
   else if(s==='home')renderHome();
   else if(s==='list')renderList();
   else if(s==='form')renderForm();
-  window.scrollTo(0,0);
 }
 
 // ── PIN ──
@@ -286,7 +285,7 @@ function renderHome(){
     </div>
   </div>`;
 }
-window.openMod=function(m){S.module=m;S.screen='list';render()};
+window.openMod=function(m){S.module=m;S.screen='list';render();window.scrollTo(0,0)};
 
 // ── LIST ──
 function renderList(){
@@ -343,9 +342,9 @@ function renderForm(){
   <div class="fnav">${prevBtn}${nextBtn}</div>`;
 }
 
-window.nextStep=function(){syncForm();S.step++;render()};
-window.prevStep=function(){syncForm();S.step--;render()};
-window.saveBack=function(){syncForm();const d={...S.form,updatedAt:new Date().toISOString()};LS.save(d);toast('Sauvegardé ✓');S.screen='list';render()};
+window.nextStep=function(){syncForm();S.step++;render();window.scrollTo(0,0)};
+window.prevStep=function(){syncForm();S.step--;render();window.scrollTo(0,0)};
+window.saveBack=function(){syncForm();const d={...S.form,updatedAt:new Date().toISOString()};LS.save(d);toast('Sauvegardé ✓');S.screen='list';render();window.scrollTo(0,0)};
 
 function syncForm(){
   document.querySelectorAll('[data-field]').forEach(el=>{
@@ -590,7 +589,7 @@ function renderAFSummary(){
       <div class="srow"><span>Heures/sem</span><span>${f.heuresSem||'—'}</span></div>
       <div class="srow"><span>Durée</span><span>${f.dureeAide||'—'}</span></div>
     </div>
-    <button class="exbtn" onclick="window.open('mailto:?subject=Dossier AF - ${f.nom||''} ${f.prenom||''}&body=${emailBody}')">
+    <button class="exbtn" onclick="window.location.href='mailto:?subject=Dossier AF - ${f.nom||''} ${f.prenom||''}&body=${emailBody}'">
       <span style="font-size:20px">📧</span><span>Envoyer par email</span>
     </button>`;
 }
@@ -616,7 +615,7 @@ function renderAMS(st){
     </div>
     ${(f.taches||[]).length?`<div class="ssec"><h4>Tâches</h4><div class="stags">${(f.taches||[]).map(t=>`<span class="stag">${t}</span>`).join('')}</div></div>`:''}
     ${f.observations?`<div class="ssec"><h4>Observations</h4><p style="font-size:14px;line-height:1.5">${f.observations}</p></div>`:''}
-    <button class="exbtn" onclick="window.open('mailto:?subject=Dossier AMS - ${f.nom||''} ${f.prenom||''}&body=${emailBody}')">
+    <button class="exbtn" onclick="window.location.href='mailto:?subject=Dossier AMS - ${f.nom||''} ${f.prenom||''}&body=${emailBody}'">
       <span style="font-size:20px">📧</span><span>Envoyer par email</span>
     </button>`;
 }
@@ -650,7 +649,7 @@ function renderRepas(st){
       <div class="srow"><span>Fréquence</span><span>${f.frequence||'—'}</span></div>
       ${f.allergies?`<div class="srow"><span>Allergies</span><span>${f.allergies}</span></div>`:''}
     </div>
-    <button class="exbtn" onclick="window.open('mailto:?subject=Dossier Repas - ${f.nom||''} ${f.prenom||''}&body=${emailBody}')">
+    <button class="exbtn" onclick="window.location.href='mailto:?subject=Dossier Repas - ${f.nom||''} ${f.prenom||''}&body=${emailBody}'">
       <span style="font-size:20px">📧</span><span>Envoyer par email</span>
     </button>`;
 }
