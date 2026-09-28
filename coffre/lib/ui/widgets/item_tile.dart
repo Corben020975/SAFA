@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../core/date_labels.dart';
 import '../../data/database.dart';
 import '../../data/enums.dart';
+import '../item_actions.dart';
 import '../theme.dart';
 
+/// Ligne compacte de la vue Flux : rond « fait » à gauche, une ligne d'infos.
 class ItemTile extends StatelessWidget {
   const ItemTile({
     super.key,
@@ -21,35 +22,40 @@ class ItemTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final p = Palette.of(context);
     final done = item.status == ItemStatus.done;
-    final lines = item.content.trim().split('\n');
-    final title = lines.first;
-    final preview = lines.skip(1).join(' ').trim();
-    final color = kindColor(item.kind, scheme);
-    final reminder = item.remindAt;
-    final overdue = !done && reminder != null && reminder.isBefore(DateTime.now());
+    final title = item.content.trim().split('\n').first;
+    final when = itemWhen(item, DateTime.now());
+    final overdue = when?.startsWith('En retard') ?? false;
+    final accent = priorityColor(item.priority, scheme);
+    final meta = [
+      itemMeta(item),
+      if (item.status == ItemStatus.doing) 'En cours',
+      ...item.tags.take(2).map((t) => '#$t'),
+    ].join(' · ');
 
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(4, 8, 16, 12),
+        padding: const EdgeInsets.fromLTRB(6, 6, 18, 6),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Zone tactile de 48 dp minimum : « fait » en un geste.
+            // Zone tactile de 48 dp : « fait » en un geste.
             IconButton(
-              iconSize: 30,
+              iconSize: 28,
               tooltip: done ? 'Réactiver' : 'Marquer fait',
               onPressed: onToggleDone,
               icon: Icon(
                 done ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: done ? scheme.primary : color,
+                color: done
+                    ? p.sage
+                    : kindColor(item.kind, scheme).withValues(alpha: 0.9),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 2),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(top: 10),
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -57,82 +63,53 @@ class ItemTile extends StatelessWidget {
                       title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
                         decoration: done ? TextDecoration.lineThrough : null,
-                        color: done ? scheme.onSurfaceVariant : null,
+                        color: done ? p.muted : p.ink,
                       ),
                     ),
-                    if (preview.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          preview,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
+                    const SizedBox(height: 3),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: meta),
+                          if (when != null)
+                            TextSpan(
+                              text: '  ·  $when',
+                              style: TextStyle(
+                                color: overdue ? p.coral : p.sage,
+                              ),
+                            ),
+                        ],
                       ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        _Pill(icon: kindIcon(item.kind), text: item.kind.label, color: color),
-                        if (item.status == ItemStatus.doing)
-                          _Pill(icon: Icons.timelapse, text: 'En cours', color: scheme.secondary),
-                        if (item.priority == ItemPriority.high)
-                          _Pill(icon: Icons.flag, text: 'Haute', color: scheme.error),
-                        if (item.priority == ItemPriority.low)
-                          _Pill(icon: Icons.south, text: 'Basse', color: scheme.outline),
-                        if (reminder != null)
-                          _Pill(
-                            icon: overdue ? Icons.alarm_off : Icons.alarm,
-                            text: formatReminder(reminder),
-                            color: overdue ? scheme.error : scheme.primary,
-                          ),
-                        for (final tag in item.tags.take(3))
-                          _Pill(text: '#$tag', color: scheme.outline),
-                      ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: p.muted,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
+            if (accent != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Tooltip(
+                  message: 'Priorité ${item.priority.label.toLowerCase()}',
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: accent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  const _Pill({this.icon, required this.text, required this.color});
-  final IconData? icon;
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 15, color: color),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            text,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(color: color),
-          ),
-        ],
       ),
     );
   }

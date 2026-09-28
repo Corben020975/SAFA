@@ -24,11 +24,22 @@ enum ItemStatus {
 enum ItemPriority {
   low('Basse'),
   normal('Normale'),
-  high('Haute');
+  high('Haute'),
+  urgent('Urgente');
 
   const ItemPriority(this.label);
   final String label;
 }
+
+/// Contextes proposés (détectés automatiquement à la saisie, modifiables).
+const kContexts = [
+  'Travail',
+  'Santé',
+  'Admin',
+  'Perso',
+  'Déplacement',
+  'Hockey',
+];
 
 enum InboxFilter {
   inbox('Inbox'),

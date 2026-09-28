@@ -95,6 +95,41 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _rawMeta = const VerificationMeta('raw');
+  @override
+  late final GeneratedColumn<String> raw = GeneratedColumn<String>(
+    'raw',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _contextMeta = const VerificationMeta(
+    'context',
+  );
+  @override
+  late final GeneratedColumn<String> context = GeneratedColumn<String>(
+    'context',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _preAlertMeta = const VerificationMeta(
+    'preAlert',
+  );
+  @override
+  late final GeneratedColumn<bool> preAlert = GeneratedColumn<bool>(
+    'pre_alert',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("pre_alert" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _searchTextMeta = const VerificationMeta(
     'searchText',
   );
@@ -148,6 +183,9 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     tags,
     remindAt,
     inbox,
+    raw,
+    context,
+    preAlert,
     searchText,
     createdAt,
     updatedAt,
@@ -186,6 +224,24 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
       context.handle(
         _inboxMeta,
         inbox.isAcceptableOrUnknown(data['inbox']!, _inboxMeta),
+      );
+    }
+    if (data.containsKey('raw')) {
+      context.handle(
+        _rawMeta,
+        raw.isAcceptableOrUnknown(data['raw']!, _rawMeta),
+      );
+    }
+    if (data.containsKey('context')) {
+      context.handle(
+        _contextMeta,
+        this.context.isAcceptableOrUnknown(data['context']!, _contextMeta),
+      );
+    }
+    if (data.containsKey('pre_alert')) {
+      context.handle(
+        _preAlertMeta,
+        preAlert.isAcceptableOrUnknown(data['pre_alert']!, _preAlertMeta),
       );
     }
     if (data.containsKey('search_text')) {
@@ -265,6 +321,18 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         DriftSqlType.bool,
         data['${effectivePrefix}inbox'],
       )!,
+      raw: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}raw'],
+      ),
+      context: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}context'],
+      ),
+      preAlert: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}pre_alert'],
+      )!,
       searchText: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}search_text'],
@@ -311,6 +379,15 @@ class Item extends DataClass implements Insertable<Item> {
   /// true tant que l'élément n'a pas été « classé » depuis l'Inbox.
   final bool inbox;
 
+  /// Texte tel que tapé ou dicté, quand l'analyse l'a nettoyé (« Brut »).
+  final String? raw;
+
+  /// Contexte : Travail, Santé, Admin… (détecté à la saisie, modifiable).
+  final String? context;
+
+  /// Notification supplémentaire 1 h 30 avant le rappel.
+  final bool preAlert;
+
   /// Contenu + tags normalisés (voir text_normalize.dart), pour la recherche.
   final String searchText;
   final DateTime createdAt;
@@ -325,6 +402,9 @@ class Item extends DataClass implements Insertable<Item> {
     required this.tags,
     this.remindAt,
     required this.inbox,
+    this.raw,
+    this.context,
+    required this.preAlert,
     required this.searchText,
     required this.createdAt,
     required this.updatedAt,
@@ -355,6 +435,13 @@ class Item extends DataClass implements Insertable<Item> {
       map['remind_at'] = Variable<DateTime>(remindAt);
     }
     map['inbox'] = Variable<bool>(inbox);
+    if (!nullToAbsent || raw != null) {
+      map['raw'] = Variable<String>(raw);
+    }
+    if (!nullToAbsent || context != null) {
+      map['context'] = Variable<String>(context);
+    }
+    map['pre_alert'] = Variable<bool>(preAlert);
     map['search_text'] = Variable<String>(searchText);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -376,6 +463,11 @@ class Item extends DataClass implements Insertable<Item> {
           ? const Value.absent()
           : Value(remindAt),
       inbox: Value(inbox),
+      raw: raw == null && nullToAbsent ? const Value.absent() : Value(raw),
+      context: context == null && nullToAbsent
+          ? const Value.absent()
+          : Value(context),
+      preAlert: Value(preAlert),
       searchText: Value(searchText),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -405,6 +497,9 @@ class Item extends DataClass implements Insertable<Item> {
       tags: serializer.fromJson<List<String>>(json['tags']),
       remindAt: serializer.fromJson<DateTime?>(json['remindAt']),
       inbox: serializer.fromJson<bool>(json['inbox']),
+      raw: serializer.fromJson<String?>(json['raw']),
+      context: serializer.fromJson<String?>(json['context']),
+      preAlert: serializer.fromJson<bool>(json['preAlert']),
       searchText: serializer.fromJson<String>(json['searchText']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -429,6 +524,9 @@ class Item extends DataClass implements Insertable<Item> {
       'tags': serializer.toJson<List<String>>(tags),
       'remindAt': serializer.toJson<DateTime?>(remindAt),
       'inbox': serializer.toJson<bool>(inbox),
+      'raw': serializer.toJson<String?>(raw),
+      'context': serializer.toJson<String?>(context),
+      'preAlert': serializer.toJson<bool>(preAlert),
       'searchText': serializer.toJson<String>(searchText),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -445,6 +543,9 @@ class Item extends DataClass implements Insertable<Item> {
     List<String>? tags,
     Value<DateTime?> remindAt = const Value.absent(),
     bool? inbox,
+    Value<String?> raw = const Value.absent(),
+    Value<String?> context = const Value.absent(),
+    bool? preAlert,
     String? searchText,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -458,6 +559,9 @@ class Item extends DataClass implements Insertable<Item> {
     tags: tags ?? this.tags,
     remindAt: remindAt.present ? remindAt.value : this.remindAt,
     inbox: inbox ?? this.inbox,
+    raw: raw.present ? raw.value : this.raw,
+    context: context.present ? context.value : this.context,
+    preAlert: preAlert ?? this.preAlert,
     searchText: searchText ?? this.searchText,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -473,6 +577,9 @@ class Item extends DataClass implements Insertable<Item> {
       tags: data.tags.present ? data.tags.value : this.tags,
       remindAt: data.remindAt.present ? data.remindAt.value : this.remindAt,
       inbox: data.inbox.present ? data.inbox.value : this.inbox,
+      raw: data.raw.present ? data.raw.value : this.raw,
+      context: data.context.present ? data.context.value : this.context,
+      preAlert: data.preAlert.present ? data.preAlert.value : this.preAlert,
       searchText: data.searchText.present
           ? data.searchText.value
           : this.searchText,
@@ -493,6 +600,9 @@ class Item extends DataClass implements Insertable<Item> {
           ..write('tags: $tags, ')
           ..write('remindAt: $remindAt, ')
           ..write('inbox: $inbox, ')
+          ..write('raw: $raw, ')
+          ..write('context: $context, ')
+          ..write('preAlert: $preAlert, ')
           ..write('searchText: $searchText, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -511,6 +621,9 @@ class Item extends DataClass implements Insertable<Item> {
     tags,
     remindAt,
     inbox,
+    raw,
+    context,
+    preAlert,
     searchText,
     createdAt,
     updatedAt,
@@ -528,6 +641,9 @@ class Item extends DataClass implements Insertable<Item> {
           other.tags == this.tags &&
           other.remindAt == this.remindAt &&
           other.inbox == this.inbox &&
+          other.raw == this.raw &&
+          other.context == this.context &&
+          other.preAlert == this.preAlert &&
           other.searchText == this.searchText &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -543,6 +659,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
   final Value<List<String>> tags;
   final Value<DateTime?> remindAt;
   final Value<bool> inbox;
+  final Value<String?> raw;
+  final Value<String?> context;
+  final Value<bool> preAlert;
   final Value<String> searchText;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -556,6 +675,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.tags = const Value.absent(),
     this.remindAt = const Value.absent(),
     this.inbox = const Value.absent(),
+    this.raw = const Value.absent(),
+    this.context = const Value.absent(),
+    this.preAlert = const Value.absent(),
     this.searchText = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -570,6 +692,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.tags = const Value.absent(),
     this.remindAt = const Value.absent(),
     this.inbox = const Value.absent(),
+    this.raw = const Value.absent(),
+    this.context = const Value.absent(),
+    this.preAlert = const Value.absent(),
     this.searchText = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -587,6 +712,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Expression<String>? tags,
     Expression<DateTime>? remindAt,
     Expression<bool>? inbox,
+    Expression<String>? raw,
+    Expression<String>? context,
+    Expression<bool>? preAlert,
     Expression<String>? searchText,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -601,6 +729,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       if (tags != null) 'tags': tags,
       if (remindAt != null) 'remind_at': remindAt,
       if (inbox != null) 'inbox': inbox,
+      if (raw != null) 'raw': raw,
+      if (context != null) 'context': context,
+      if (preAlert != null) 'pre_alert': preAlert,
       if (searchText != null) 'search_text': searchText,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -617,6 +748,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Value<List<String>>? tags,
     Value<DateTime?>? remindAt,
     Value<bool>? inbox,
+    Value<String?>? raw,
+    Value<String?>? context,
+    Value<bool>? preAlert,
     Value<String>? searchText,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -631,6 +765,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       tags: tags ?? this.tags,
       remindAt: remindAt ?? this.remindAt,
       inbox: inbox ?? this.inbox,
+      raw: raw ?? this.raw,
+      context: context ?? this.context,
+      preAlert: preAlert ?? this.preAlert,
       searchText: searchText ?? this.searchText,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -673,6 +810,15 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     if (inbox.present) {
       map['inbox'] = Variable<bool>(inbox.value);
     }
+    if (raw.present) {
+      map['raw'] = Variable<String>(raw.value);
+    }
+    if (context.present) {
+      map['context'] = Variable<String>(context.value);
+    }
+    if (preAlert.present) {
+      map['pre_alert'] = Variable<bool>(preAlert.value);
+    }
     if (searchText.present) {
       map['search_text'] = Variable<String>(searchText.value);
     }
@@ -699,6 +845,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
           ..write('tags: $tags, ')
           ..write('remindAt: $remindAt, ')
           ..write('inbox: $inbox, ')
+          ..write('raw: $raw, ')
+          ..write('context: $context, ')
+          ..write('preAlert: $preAlert, ')
           ..write('searchText: $searchText, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -947,6 +1096,9 @@ typedef $$ItemsTableCreateCompanionBuilder = ItemsCompanion Function({
   Value<List<String>> tags,
   Value<DateTime?> remindAt,
   Value<bool> inbox,
+  Value<String?> raw,
+  Value<String?> context,
+  Value<bool> preAlert,
   Value<String> searchText,
   required DateTime createdAt,
   required DateTime updatedAt,
@@ -961,6 +1113,9 @@ typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
   Value<List<String>> tags,
   Value<DateTime?> remindAt,
   Value<bool> inbox,
+  Value<String?> raw,
+  Value<String?> context,
+  Value<bool> preAlert,
   Value<String> searchText,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -1016,6 +1171,21 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<bool> get inbox => $composableBuilder(
     column: $table.inbox,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get raw => $composableBuilder(
+    column: $table.raw,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get context => $composableBuilder(
+    column: $table.context,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get preAlert => $composableBuilder(
+    column: $table.preAlert,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1089,6 +1259,21 @@ class $$ItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get raw => $composableBuilder(
+    column: $table.raw,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get context => $composableBuilder(
+    column: $table.context,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get preAlert => $composableBuilder(
+    column: $table.preAlert,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get searchText => $composableBuilder(
     column: $table.searchText,
     builder: (column) => ColumnOrderings(column),
@@ -1143,6 +1328,15 @@ class $$ItemsTableAnnotationComposer
   GeneratedColumn<bool> get inbox =>
       $composableBuilder(column: $table.inbox, builder: (column) => column);
 
+  GeneratedColumn<String> get raw =>
+      $composableBuilder(column: $table.raw, builder: (column) => column);
+
+  GeneratedColumn<String> get context =>
+      $composableBuilder(column: $table.context, builder: (column) => column);
+
+  GeneratedColumn<bool> get preAlert =>
+      $composableBuilder(column: $table.preAlert, builder: (column) => column);
+
   GeneratedColumn<String> get searchText => $composableBuilder(
     column: $table.searchText,
     builder: (column) => column,
@@ -1194,6 +1388,9 @@ class $$ItemsTableTableManager
                 Value<List<String>> tags = const Value.absent(),
                 Value<DateTime?> remindAt = const Value.absent(),
                 Value<bool> inbox = const Value.absent(),
+                Value<String?> raw = const Value.absent(),
+                Value<String?> context = const Value.absent(),
+                Value<bool> preAlert = const Value.absent(),
                 Value<String> searchText = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -1207,6 +1404,9 @@ class $$ItemsTableTableManager
                 tags: tags,
                 remindAt: remindAt,
                 inbox: inbox,
+                raw: raw,
+                context: context,
+                preAlert: preAlert,
                 searchText: searchText,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -1222,6 +1422,9 @@ class $$ItemsTableTableManager
                 Value<List<String>> tags = const Value.absent(),
                 Value<DateTime?> remindAt = const Value.absent(),
                 Value<bool> inbox = const Value.absent(),
+                Value<String?> raw = const Value.absent(),
+                Value<String?> context = const Value.absent(),
+                Value<bool> preAlert = const Value.absent(),
                 Value<String> searchText = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -1235,6 +1438,9 @@ class $$ItemsTableTableManager
                 tags: tags,
                 remindAt: remindAt,
                 inbox: inbox,
+                raw: raw,
+                context: context,
+                preAlert: preAlert,
                 searchText: searchText,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

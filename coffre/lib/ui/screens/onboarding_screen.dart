@@ -61,7 +61,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _test() async {
-    final outcome = await _s.notifications.scheduleTest(const Duration(minutes: 1));
+    final outcome = await _s.notifications.scheduleTest(
+      const Duration(minutes: 1),
+    );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -160,7 +162,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: FilledButton(onPressed: _finish, child: const Text('Terminer')),
+          child: FilledButton(
+            onPressed: _finish,
+            child: const Text('Terminer'),
+          ),
         ),
       ),
     );
@@ -204,13 +209,18 @@ class _StepCard extends StatelessWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: done ? scheme.primary : scheme.surfaceContainerHighest,
+                  backgroundColor: done
+                      ? scheme.primary
+                      : scheme.surfaceContainerHighest,
                   foregroundColor: done ? scheme.onPrimary : scheme.onSurface,
                   child: done ? const Icon(Icons.check) : Text('$number'),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
                 if (ok == false) Icon(Icons.warning_amber, color: scheme.error),
               ],
@@ -221,9 +231,8 @@ class _StepCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 help!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
               ),
             ],
             if (!done) ...[
@@ -232,9 +241,15 @@ class _StepCard extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  FilledButton.tonal(onPressed: onAction, child: Text(actionLabel)),
+                  FilledButton.tonal(
+                    onPressed: onAction,
+                    child: Text(actionLabel),
+                  ),
                   if (secondaryLabel != null)
-                    OutlinedButton(onPressed: onSecondary, child: Text(secondaryLabel!)),
+                    OutlinedButton(
+                      onPressed: onSecondary,
+                      child: Text(secondaryLabel!),
+                    ),
                 ],
               ),
             ],

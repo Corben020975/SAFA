@@ -6,7 +6,7 @@ import 'core/app_services.dart';
 import 'services/launch_router.dart';
 import 'ui/screens/capture_screen.dart';
 import 'ui/screens/detail_screen.dart';
-import 'ui/screens/inbox_screen.dart';
+import 'ui/screens/home_shell.dart';
 import 'ui/screens/onboarding_screen.dart';
 import 'ui/screens/settings_screen.dart';
 import 'ui/theme.dart';
@@ -22,8 +22,9 @@ class CoffreApp extends StatefulWidget {
 
 class _CoffreAppState extends State<CoffreApp> {
   late final AppLifecycleListener _lifecycle;
-  late final String _initialRoute =
-      widget.services.settings.onboardingDone ? '/' : '/onboarding';
+  late final String _initialRoute = widget.services.settings.onboardingDone
+      ? '/'
+      : '/onboarding';
 
   @override
   void initState() {
@@ -48,7 +49,7 @@ class _CoffreAppState extends State<CoffreApp> {
 
   Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     final Widget page = switch (settings.name) {
-      '/' => const InboxScreen(),
+      '/' => const HomeShell(),
       '/capture' => CaptureScreen(
         args: settings.arguments is CaptureArgs
             ? settings.arguments! as CaptureArgs
@@ -57,7 +58,7 @@ class _CoffreAppState extends State<CoffreApp> {
       '/item' => DetailScreen(itemId: settings.arguments! as int),
       '/settings' => const SettingsScreen(),
       '/onboarding' => const OnboardingScreen(),
-      _ => const InboxScreen(),
+      _ => const HomeShell(),
     };
     return MaterialPageRoute(
       settings: settings,
@@ -89,7 +90,10 @@ class _CoffreAppState extends State<CoffreApp> {
             final mq = MediaQuery.of(context);
             return MediaQuery(
               data: mq.copyWith(
-                textScaler: combinedTextScaler(mq.textScaler, settings.textScale),
+                textScaler: combinedTextScaler(
+                  mq.textScaler,
+                  settings.textScale,
+                ),
               ),
               child: child!,
             );

@@ -30,7 +30,11 @@ class KindSelector extends StatelessWidget {
 }
 
 class PrioritySelector extends StatelessWidget {
-  const PrioritySelector({super.key, required this.value, required this.onChanged});
+  const PrioritySelector({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
   final ItemPriority value;
   final ValueChanged<ItemPriority> onChanged;
 
@@ -42,11 +46,7 @@ class PrioritySelector extends StatelessWidget {
         showSelectedIcon: false,
         segments: [
           for (final p in ItemPriority.values)
-            ButtonSegment(
-              value: p,
-              label: Text(p.label),
-              icon: p == ItemPriority.high ? const Icon(Icons.flag) : null,
-            ),
+            ButtonSegment(value: p, label: Text(p.label)),
         ],
         selected: {value},
         onSelectionChanged: (s) => onChanged(s.first),
@@ -56,7 +56,11 @@ class PrioritySelector extends StatelessWidget {
 }
 
 class StatusSelector extends StatelessWidget {
-  const StatusSelector({super.key, required this.value, required this.onChanged});
+  const StatusSelector({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
   final ItemStatus value;
   final ValueChanged<ItemStatus> onChanged;
 
@@ -77,6 +81,63 @@ class StatusSelector extends StatelessWidget {
   }
 }
 
+/// Contexte : Travail, Santé… (un seul, ou aucun).
+class ContextSelector extends StatelessWidget {
+  const ContextSelector({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final options = [
+      ...kContexts,
+      if (value != null && !kContexts.contains(value)) value!,
+    ];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final c in options)
+          ChoiceChip(
+            label: Text(c),
+            selected: c == value,
+            onSelected: (selected) => onChanged(selected ? c : null),
+          ),
+      ],
+    );
+  }
+}
+
+/// Notification supplémentaire 1 h 30 avant le rappel (utile pour un rendez-vous).
+class PreAlertSwitch extends StatelessWidget {
+  const PreAlertSwitch({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+        secondary: const Icon(Icons.notifications_active_outlined),
+        title: const Text('Pré-alerte 1 h 30 avant'),
+        subtitle: const Text('Pour un rendez-vous ou un départ'),
+        value: value,
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
 /// Petit titre de section, lisible et discret.
 class SectionLabel extends StatelessWidget {
   const SectionLabel(this.text, {super.key});
@@ -88,9 +149,8 @@ class SectionLabel extends StatelessWidget {
       padding: const EdgeInsets.only(top: 20, bottom: 8, left: 4),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
+        style: Theme.of(context).textTheme.titleSmall
+            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
     );
   }

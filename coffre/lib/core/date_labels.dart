@@ -22,7 +22,9 @@ String formatReminder(DateTime dt, {DateTime? now}) {
   if (days > 1 && days < 7) {
     return '${_capitalize(DateFormat.EEEE('fr').format(dt))} $time';
   }
-  if (dt.year == now.year) return '${DateFormat('d MMM', 'fr').format(dt)} · $time';
+  if (dt.year == now.year) {
+    return '${DateFormat('d MMM', 'fr').format(dt)} · $time';
+  }
   return '${DateFormat('d MMM y', 'fr').format(dt)} · $time';
 }
 

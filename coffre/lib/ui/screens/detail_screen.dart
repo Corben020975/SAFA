@@ -8,6 +8,7 @@ import '../../core/date_labels.dart';
 import '../../data/database.dart';
 import '../../data/enums.dart';
 import '../../services/notification_service.dart';
+import '../theme.dart';
 import '../widgets/dictation_button.dart';
 import '../widgets/reminder_field.dart';
 import '../widgets/selectors.dart';
@@ -152,6 +153,8 @@ class _DetailScreenState extends State<DetailScreen> {
     messenger.showSnackBar(
       SnackBar(
         content: const Text('Supprimé'),
+        persist: false,
+        duration: kUndoDuration,
         action: SnackBarAction(
           label: 'Annuler',
           onPressed: () async {
@@ -213,7 +216,8 @@ class _DetailScreenState extends State<DetailScreen> {
             const SectionLabel('État'),
             StatusSelector(
               value: item.status,
-              onChanged: (st) => _save(item.copyWith(status: st), reschedule: true),
+              onChanged: (st) =>
+                  _save(item.copyWith(status: st), reschedule: true),
             ),
           ],
           const SectionLabel('Contenu'),
@@ -231,15 +235,55 @@ class _DetailScreenState extends State<DetailScreen> {
           ),
           const SizedBox(height: 8),
           const DictationPanel(),
+          if (item.raw != null && item.raw!.trim() != item.content.trim())
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Theme(
+                data: theme.copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+                  leading: const Icon(Icons.history_edu_outlined),
+                  title: const Text('Texte d\'origine'),
+                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  expandedAlignment: Alignment.centerLeft,
+                  children: [
+                    SelectableText(
+                      item.raw!,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           const SectionLabel('Rappel'),
           ReminderField(
             value: item.remindAt,
-            onChanged: (d) => _save(item.copyWith(remindAt: Value(d)), reschedule: true),
+            onChanged: (d) =>
+                _save(item.copyWith(remindAt: Value(d)), reschedule: true),
           ),
+          if (item.remindAt != null)
+            PreAlertSwitch(
+              value: item.preAlert,
+              onChanged: (v) =>
+                  _save(item.copyWith(preAlert: v), reschedule: true),
+            ),
           const SectionLabel('Priorité'),
           PrioritySelector(
             value: item.priority,
-            onChanged: (p) => _save(item.copyWith(priority: p), reschedule: item.remindAt != null),
+            onChanged: (p) => _save(
+              item.copyWith(priority: p),
+              reschedule: item.remindAt != null,
+            ),
+          ),
+          const SectionLabel('Contexte'),
+          ContextSelector(
+            value: item.context,
+            onChanged: (c) => _save(
+              item.copyWith(context: Value(c)),
+              reschedule: item.remindAt != null,
+            ),
           ),
           const SectionLabel('Tags'),
           TagsEditor(

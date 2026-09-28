@@ -33,8 +33,9 @@ class Items extends Table {
   TextColumn get kind => textEnum<ItemKind>()();
   TextColumn get status =>
       textEnum<ItemStatus>().withDefault(Constant(ItemStatus.todo.name))();
-  IntColumn get priority => intEnum<ItemPriority>()
-      .withDefault(Constant(ItemPriority.normal.index))();
+  IntColumn get priority => intEnum<ItemPriority>().withDefault(
+    Constant(ItemPriority.normal.index),
+  )();
   TextColumn get content => text()();
   TextColumn get tags =>
       text().map(const TagsConverter()).withDefault(const Constant('[]'))();
@@ -42,6 +43,15 @@ class Items extends Table {
 
   /// true tant que l'élément n'a pas été « classé » depuis l'Inbox.
   BoolColumn get inbox => boolean().withDefault(const Constant(true))();
+
+  /// Texte tel que tapé ou dicté, quand l'analyse l'a nettoyé (« Brut »).
+  TextColumn get raw => text().nullable()();
+
+  /// Contexte : Travail, Santé, Admin… (détecté à la saisie, modifiable).
+  TextColumn get context => text().nullable()();
+
+  /// Notification supplémentaire 1 h 30 avant le rappel.
+  BoolColumn get preAlert => boolean().withDefault(const Constant(false))();
 
   /// Contenu + tags normalisés (voir text_normalize.dart), pour la recherche.
   TextColumn get searchText => text().withDefault(const Constant(''))();
@@ -65,14 +75,18 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) => m.createAll(),
+    // Chaque version ajoute des colonnes sans toucher aux données existantes.
     onUpgrade: (m, from, to) async {
-      // v1.1 : incrémenter schemaVersion et ajouter ici les évolutions,
-      // ex. `if (from < 2) await m.addColumn(items, items.recurrence);`
+      if (from < 2) {
+        await m.addColumn(items, items.raw);
+        await m.addColumn(items, items.context);
+        await m.addColumn(items, items.preAlert);
+      }
     },
   );
 
@@ -124,6 +138,13 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// Tout ce qui n'est pas fait : base de la vue « Jour ».
+  Stream<List<Item>> watchOpen() =>
+      (select(items)
+            ..where((t) => t.status.equalsValue(ItemStatus.done).not())
+            ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+          .watch();
+
   Stream<Item?> watchItem(int id) =>
       (select(items)..where((t) => t.id.equals(id))).watchSingleOrNull();
 
@@ -154,6 +175,9 @@ class AppDatabase extends _$AppDatabase {
     ItemPriority priority = ItemPriority.normal,
     List<String> tags = const [],
     DateTime? remindAt,
+    String? raw,
+    String? context,
+    bool preAlert = false,
   }) async {
     final now = DateTime.now();
     final id = await into(items).insert(
@@ -163,7 +187,10 @@ class AppDatabase extends _$AppDatabase {
         priority: Value(priority),
         tags: Value(tags),
         remindAt: Value(remindAt),
-        searchText: Value(buildSearchText(content, tags)),
+        raw: Value(raw),
+        context: Value(context),
+        preAlert: Value(preAlert),
+        searchText: Value(buildSearchText(content, [...tags, ?context])),
         createdAt: now,
         updatedAt: now,
       ),
@@ -177,7 +204,7 @@ class AppDatabase extends _$AppDatabase {
     final now = DateTime.now();
     final saved = item.copyWith(
       content: item.content.trim(),
-      searchText: buildSearchText(item.content, item.tags),
+      searchText: buildSearchText(item.content, [...item.tags, ?item.context]),
       updatedAt: now,
       doneAt: Value(
         item.status == ItemStatus.done ? (item.doneAt ?? now) : null,
@@ -197,6 +224,13 @@ class AppDatabase extends _$AppDatabase {
     final item = await getItem(id);
     if (item == null) return null;
     return saveItem(item.copyWith(inbox: inInbox));
+  }
+
+  /// « Plus tard » depuis une carte : déplace le rappel.
+  Future<Item?> setReminder(int id, DateTime? at) async {
+    final item = await getItem(id);
+    if (item == null) return null;
+    return saveItem(item.copyWith(remindAt: Value(at)));
   }
 
   /// Reporte le rappel à maintenant + [delay] (action « snooze » de la notification).
@@ -243,9 +277,8 @@ class AppDatabase extends _$AppDatabase {
     return {for (final row in rows) row.key: row.value};
   }
 
-  Future<void> setPref(String key, String value) => into(
-    prefs,
-  ).insertOnConflictUpdate(PrefsCompanion.insert(key: key, value: value));
+  Future<void> setPref(String key, String value) => into(prefs)
+      .insertOnConflictUpdate(PrefsCompanion.insert(key: key, value: value));
 
   // ---------------------------------------------------------------------------
   // Filtres et tris

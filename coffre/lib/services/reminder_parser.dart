@@ -24,15 +24,38 @@ class ReminderParser {
   };
 
   static const _months = {
-    'janvier': 1, 'fevrier': 2, 'mars': 3, 'avril': 4, 'mai': 5, 'juin': 6,
-    'juillet': 7, 'aout': 8, 'septembre': 9, 'octobre': 10, 'novembre': 11,
+    'janvier': 1,
+    'fevrier': 2,
+    'mars': 3,
+    'avril': 4,
+    'mai': 5,
+    'juin': 6,
+    'juillet': 7,
+    'aout': 8,
+    'septembre': 9,
+    'octobre': 10,
+    'novembre': 11,
     'decembre': 12,
   };
 
   static const _numberWords = {
-    'un': 1, 'une': 1, 'deux': 2, 'trois': 3, 'quatre': 4, 'cinq': 5,
-    'six': 6, 'sept': 7, 'huit': 8, 'neuf': 9, 'dix': 10, 'onze': 11,
-    'douze': 12, 'quinze': 15, 'vingt': 20, 'trente': 30, 'quarante': 40,
+    'un': 1,
+    'une': 1,
+    'deux': 2,
+    'trois': 3,
+    'quatre': 4,
+    'cinq': 5,
+    'six': 6,
+    'sept': 7,
+    'huit': 8,
+    'neuf': 9,
+    'dix': 10,
+    'onze': 11,
+    'douze': 12,
+    'quinze': 15,
+    'vingt': 20,
+    'trente': 30,
+    'quarante': 40,
     'quarante-cinq': 45,
   };
 
@@ -69,7 +92,9 @@ class ReminderParser {
   );
 
   // Heure seule : exige « à / vers / pour » devant pour éviter « réunion de 2h ».
-  static final _timeAlone = RegExp('(?<![a-z])(?:a|vers|pour|des)\\s+(?:$_time)');
+  static final _timeAlone = RegExp(
+    '(?<![a-z])(?:a|vers|pour|des)\\s+(?:$_time)',
+  );
 
   static ParsedReminder? parse(String text, {DateTime? now}) {
     now ??= DateTime.now();
@@ -139,9 +164,7 @@ class ReminderParser {
       day = _resolveDate(
         now,
         int.parse(m.group(3)!),
-        m.group(4) != null
-            ? int.parse(m.group(4)!)
-            : _months[m.group(5)],
+        m.group(4) != null ? int.parse(m.group(4)!) : _months[m.group(5)],
       );
     }
     if (day == null) return null;
@@ -149,7 +172,11 @@ class ReminderParser {
     var end = m.end;
     final after = _timeAfterDay.firstMatch(s.substring(end));
     if (after != null) {
-      final explicit = _readTime(after.group(1), after.group(2), after.group(3));
+      final explicit = _readTime(
+        after.group(1),
+        after.group(2),
+        after.group(3),
+      );
       final period = after.group(4);
       final t = explicit ?? (period != null ? _periods[period] : null);
       if (t != null) {
@@ -196,7 +223,9 @@ class ReminderParser {
     }
     if (month < 1 || month > 12) return null;
     var candidate = DateTime(now.year, month, day);
-    if (candidate.isBefore(today)) candidate = DateTime(now.year + 1, month, day);
+    if (candidate.isBefore(today)) {
+      candidate = DateTime(now.year + 1, month, day);
+    }
     return candidate.day == day ? candidate : null;
   }
 

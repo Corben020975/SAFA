@@ -61,9 +61,10 @@ Future<OpenedDatabase> openDatabaseForUi() async {
   final file = await databaseFile();
   String? setAside;
   if (await file.exists() && _isUnreadable(file, key)) {
-    final stamp = DateTime.now()
-        .toIso8601String()
-        .replaceAll(RegExp(r'[:.]'), '-');
+    final stamp = DateTime.now().toIso8601String().replaceAll(
+      RegExp(r'[:.]'),
+      '-',
+    );
     final aside = p.join(file.parent.path, 'coffre_illisible_$stamp.sqlite');
     await file.rename(aside);
     for (final suffix in const ['-wal', '-shm']) {

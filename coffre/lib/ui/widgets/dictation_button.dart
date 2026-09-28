@@ -29,7 +29,10 @@ class DictationPanel extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('J\'écoute…', style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        'J\'écoute…',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const SizedBox(height: 8),
                       LinearProgressIndicator(
                         value: ((speech.level + 2) / 12).clamp(0.05, 1.0),
@@ -38,7 +41,10 @@ class DictationPanel extends StatelessWidget {
                       ),
                       if (speech.partialText.isNotEmpty) ...[
                         const SizedBox(height: 8),
-                        Text(speech.partialText, style: Theme.of(context).textTheme.bodyLarge),
+                        Text(
+                          speech.partialText,
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
                       ],
                     ],
                   ),
@@ -67,7 +73,10 @@ class MicButton extends StatelessWidget {
   final ValueChanged<String> onText;
   final bool large;
 
-  static Future<void> toggle(BuildContext context, ValueChanged<String> onText) async {
+  static Future<void> toggle(
+    BuildContext context,
+    ValueChanged<String> onText,
+  ) async {
     final services = AppScope.of(context);
     final speech = services.speech;
     if (speech.isListening) {
@@ -88,7 +97,10 @@ class MicButton extends StatelessWidget {
       listenable: speech,
       builder: (context, _) {
         final listening = speech.state == DictationState.listening;
-        final icon = Icon(listening ? Icons.stop : Icons.mic, size: large ? 30 : 24);
+        final icon = Icon(
+          listening ? Icons.stop : Icons.mic,
+          size: large ? 30 : 24,
+        );
         final tooltip = listening ? 'Arrêter la dictée' : 'Dicter';
         return large
             ? SizedBox(

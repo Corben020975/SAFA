@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 
@@ -16,6 +18,12 @@ import 'services/system_channel.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Affichage bord à bord : l'app dessine sous les barres système.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  LicenseRegistry.addLicense(() async* {
+    final text = await rootBundle.loadString('assets/fonts/OFL-Fraunces.txt');
+    yield LicenseEntryWithLineBreaks(['Fraunces'], text);
+  });
   await initializeDateFormatting('fr');
   Intl.defaultLocale = 'fr';
 
@@ -29,7 +37,9 @@ Future<void> main() async {
     final notifications = NotificationService();
     final navigatorKey = GlobalKey<NavigatorState>();
     final router = LaunchRouter(navigatorKey, system, notifications);
-    await notifications.init(onForegroundResponse: router.onNotificationResponse);
+    await notifications.init(
+      onForegroundResponse: router.onNotificationResponse,
+    );
 
     final services = AppServices(
       db: db,

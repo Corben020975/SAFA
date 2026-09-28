@@ -14,7 +14,10 @@ void main() {
   group('détection', () {
     test('demain 9h', () {
       expect(when('Appeler le médecin demain 9h'), DateTime(2026, 9, 29, 9));
-      expect(when('Appeler le médecin demain à 9h30'), DateTime(2026, 9, 29, 9, 30));
+      expect(
+        when('Appeler le médecin demain à 9h30'),
+        DateTime(2026, 9, 29, 9, 30),
+      );
       expect(when('demain à 9 heures'), DateTime(2026, 9, 29, 9));
       expect(when('demain 14:15'), DateTime(2026, 9, 29, 14, 15));
     });
@@ -41,7 +44,10 @@ void main() {
     });
 
     test('relatif', () {
-      expect(when('acheter du pain dans 20 minutes'), DateTime(2026, 9, 28, 10, 20));
+      expect(
+        when('acheter du pain dans 20 minutes'),
+        DateTime(2026, 9, 28, 10, 20),
+      );
       expect(when('dans une heure'), DateTime(2026, 9, 28, 11));
       expect(when('dans 2h'), DateTime(2026, 9, 28, 12));
       expect(when('dans une demi-heure'), DateTime(2026, 9, 28, 10, 30));
@@ -64,9 +70,15 @@ void main() {
 
   group('nettoyage du texte', () {
     test('retire la date et le connecteur', () {
-      expect(stripped('Appeler le médecin pour demain 9h'), 'Appeler le médecin');
+      expect(
+        stripped('Appeler le médecin pour demain 9h'),
+        'Appeler le médecin',
+      );
       expect(stripped('Demain à 9h appeler Paul'), 'Appeler Paul');
-      expect(stripped('Réunion SAFA lundi à 14h, salle 2'), 'Réunion SAFA, salle 2');
+      expect(
+        stripped('Réunion SAFA lundi à 14h, salle 2'),
+        'Réunion SAFA, salle 2',
+      );
     });
   });
 

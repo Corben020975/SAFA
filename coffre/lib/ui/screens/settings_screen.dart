@@ -27,7 +27,10 @@ class SettingsScreen extends StatelessWidget {
                 segments: const [
                   ButtonSegment(value: ThemeMode.dark, label: Text('Sombre')),
                   ButtonSegment(value: ThemeMode.light, label: Text('Clair')),
-                  ButtonSegment(value: ThemeMode.system, label: Text('Système')),
+                  ButtonSegment(
+                    value: ThemeMode.system,
+                    label: Text('Système'),
+                  ),
                 ],
                 selected: {settings.themeMode},
                 onSelectionChanged: (v) => settings.setThemeMode(v.first),
@@ -152,6 +155,12 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: Text(snap.data ?? '…'),
               ),
             ),
+            ListTile(
+              leading: const Icon(Icons.gavel_outlined),
+              title: const Text('Licences open source'),
+              onTap: () =>
+                  showLicensePage(context: context, applicationName: 'Coffre'),
+            ),
           ],
         ),
       ),
@@ -161,7 +170,9 @@ class SettingsScreen extends StatelessWidget {
   Future<void> _export(BuildContext context, {required bool json}) async {
     final s = AppScope.of(context);
     try {
-      final saved = json ? await s.backup.exportJson() : await s.backup.exportCsv();
+      final saved = json
+          ? await s.backup.exportJson()
+          : await s.backup.exportCsv();
       if (saved && json) await s.settings.markExported();
       if (context.mounted && saved) _snack(context, 'Fichier enregistré.');
     } catch (e) {
@@ -200,9 +211,8 @@ class _Header extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
     child: Text(
       text,
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-        color: Theme.of(context).colorScheme.primary,
-      ),
+      style: Theme.of(context).textTheme.titleSmall
+          ?.copyWith(color: Theme.of(context).colorScheme.primary),
     ),
   );
 }

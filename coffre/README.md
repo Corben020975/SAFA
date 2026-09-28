@@ -3,6 +3,12 @@
 App Android personnelle, privée et hors-ligne : idées, tâches, notes et rappels au même endroit.
 Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrées sur le téléphone.
 
+- **Jour** : ce qui compte maintenant, aujourd'hui, cette semaine, plus une idée récente à ne pas perdre.
+- **Flux** : tout le contenu, avec filtres, recherche, tri et gestes de balayage.
+- **Barre de capture** toujours en bas : tu écris ou dictes, Coffre devine le type, la date, la priorité
+  et le contexte (Travail, Santé, Admin…), tu relis l'aperçu, tu envoies. Le texte d'origine est gardé.
+- **Plus tard** sur chaque carte, **pré-alerte** 1 h 30 avant un rendez-vous, report 5/15/60 min depuis la notification.
+
 - **Aucun compte, aucun serveur, aucune statistique.** L'APK final n'a pas la permission Internet.
 - **Base chiffrée** (SQLite3 Multiple Ciphers, ChaCha20). La clé est générée au premier lancement et reste dans le Keystore Android.
 - **Sauvegarde** : export JSON (restaurable) ou CSV (Excel), à l'endroit que tu choisis. ⚠️ Ces fichiers ne sont pas chiffrés.
@@ -163,9 +169,10 @@ lib/
   app.dart                MaterialApp, thème, routes
   core/                   services partagés, normalisation texte, formats de date
   data/                   Drift (tables, requêtes), chiffrement, réglages, sauvegarde
-  services/               notifications (+ isolate snooze), dictée, parseur de dates, pont Android
-  ui/screens/             Inbox, Capture, Détail, Réglages, Rappels fiables
-  ui/widgets/             sélecteurs, rappel, tags, micro, ligne d'élément
+  services/               notifications (+ isolate snooze), dictée, analyse de saisie, dates, vue Jour, pont Android
+  ui/screens/             accueil (Jour + Flux), Capture, Détail, Réglages, Rappels fiables
+  ui/views/               vues Jour et Flux, bandeaux d'alerte
+  ui/widgets/             carte, ligne, barre de capture, sélecteurs, rappel, tags, micro
 android/app/src/main/     Manifest, MainActivity.kt, widget, icônes
 test/                     base de données + chiffrement, parseur de dates, parcours Inbox
 ```

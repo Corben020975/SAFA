@@ -116,8 +116,8 @@ class SpeechService extends ChangeNotifier {
     state = DictationState.idle;
     level = 0;
     lastError = switch (error.errorMsg) {
-      'error_no_match' || 'error_speech_timeout' =>
-        'Rien entendu. Touche le micro et parle.',
+      'error_no_match' ||
+      'error_speech_timeout' => 'Rien entendu. Touche le micro et parle.',
       'error_language_not_supported' || 'error_language_unavailable' =>
         'Français indisponible hors-ligne : installe le pack « Français » '
             'dans la reconnaissance vocale du téléphone, ou désactive '
@@ -128,7 +128,8 @@ class SpeechService extends ChangeNotifier {
         'Le moteur vocal a besoin d\'Internet : installe le pack hors-ligne '
             'français ou utilise le clavier.',
       'error_busy' => 'Micro occupé par une autre app. Réessaie.',
-      _ => 'Dictée interrompue (${error.errorMsg}). Tu peux continuer au clavier.',
+      _ =>
+        'Dictée interrompue (${error.errorMsg}). Tu peux continuer au clavier.',
     };
     notifyListeners();
   }
