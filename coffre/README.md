@@ -9,7 +9,31 @@ Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrée
 
 ---
 
-## Installer l'app sur le Galaxy S26 Ultra (guide débutant)
+## Installer depuis le téléphone uniquement (sans PC)
+
+GitHub compile l'app à chaque modification, la signe avec ta clé personnelle et la publie à une adresse fixe.
+
+**Une seule fois : le secret de signature**
+1. Sur le téléphone, ouvrir dans le navigateur (connecté à GitHub) :
+   https://github.com/Corben020975/SAFA/settings/secrets/actions/new
+2. *Name* : `COFFRE_KEY_PASSWORD`. *Secret* : le mot de passe de 32 caractères donné par Claude. Puis **Add secret**.
+3. Noter aussi ce mot de passe dans ton gestionnaire de mots de passe.
+4. Lancer une compilation : onglet *Actions* › « Coffre – APK » › *Run workflow* (environ 6 minutes).
+
+**Installer ou mettre à jour**
+1. Ouvrir https://github.com/Corben020975/SAFA/releases/latest/download/coffre.apk (à mettre en favori).
+2. Ouvrir le fichier téléchargé › autoriser le navigateur à « installer des applis inconnues » › **Installer**.
+   - Si Samsung bloque : *Paramètres › Sécurité et confidentialité › Blocage automatique* › désactiver le temps de l'installation.
+   - Si Play Protect avertit : *Plus de détails › Installer quand même*.
+3. Mise à jour : même lien, installer par-dessus. Les données sont conservées.
+
+Ensuite, suivre l'étape 7 ci-dessous (réglages Samsung).
+
+La clé (`android/signing/coffre-release.p12`) est chiffrée en AES-256. Sans le mot de passe, elle est inutilisable. L'APK publié ne contient aucune donnée personnelle.
+
+---
+
+## Installer avec un PC (alternative)
 
 Compte environ 1 h la première fois, surtout du téléchargement. Les exemples sont pour **Windows**. Sur Mac, c'est la même chose avec le Terminal.
 
@@ -106,14 +130,6 @@ L'assistant « Rappels fiables » s'ouvre au premier lancement. Il est aussi acc
 **Widget** : appui long sur l'écran d'accueil › *Widgets* › *Coffre* › glisser « Coffre – Ajouter ».
 
 **Test final** : *Réglages › Notification de test dans 1 minute*. Balaie l'app hors des récentes, verrouille l'écran, attends.
-
----
-
-## Variante sans PC : APK de test via GitHub
-
-Chaque modification poussée compile l'APK automatiquement : onglet **Actions** du dépôt › « Coffre – APK » › dernier run vert › *Artifacts* › `coffre-apk`.
-
-⚠️ Cet APK est signé avec une clé jetable, différente à chaque compilation. Il sert à **tester**. Pour passer d'un APK GitHub à un autre, il faut désinstaller, donc exporter d'abord ses données en JSON. Pour l'usage quotidien, suis l'étape 5.
 
 ---
 

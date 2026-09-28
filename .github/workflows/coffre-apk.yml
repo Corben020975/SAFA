@@ -1,6 +1,9 @@
-# Compile l'app Coffre (dossier coffre/) et publie l'APK en artefact téléchargeable.
-# L'APK produit ici est signé avec une clé de debug éphémère : pour tester.
-# Pour l'usage quotidien, construire sur son PC avec sa propre clé (voir coffre/README.md).
+# Compile l'app Coffre (dossier coffre/).
+# - Secret COFFRE_KEY_PASSWORD présent : APK signé avec la clé personnelle
+#   (coffre/android/signing/coffre-release.p12) et publié en « release » :
+#   https://github.com/Corben020975/SAFA/releases/latest/download/coffre.apk
+#   Chaque nouvelle version s'installe par-dessus l'ancienne, données conservées.
+# - Secret absent : APK de test (clé jetable), en artefact uniquement.
 name: Coffre – APK
 
 on:
@@ -11,10 +14,15 @@ on:
       - '.github/workflows/coffre-apk.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      COFFRE_KEY_PASSWORD: ${{ secrets.COFFRE_KEY_PASSWORD }}
     defaults:
       run:
         working-directory: coffre
@@ -41,21 +49,27 @@ jobs:
       - name: Tests
         run: flutter test
 
+      # Numéro de version = numéro de compilation : Android accepte toujours la mise à jour.
       - name: APK release (arm64, Galaxy S26 Ultra)
-        run: flutter build apk --release --target-platform android-arm64
+        run: flutter build apk --release --target-platform android-arm64 --build-number=${{ github.run_number }}
 
       - name: Vérifications de l'APK
         run: |
           APK=build/app/outputs/flutter-apk/app-release.apk
-          AAPT2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           echo "== Permissions"
-          "$AAPT2" dump permissions "$APK" | tee perms.txt
+          "$TOOLS/aapt2" dump permissions "$APK" | tee perms.txt
           if grep -q "android.permission.INTERNET" perms.txt; then
             echo "ERREUR : la permission INTERNET est présente"; exit 1
           fi
           echo "== Bibliothèques natives"
           unzip -l "$APK" | grep "\.so$" | tee libs.txt
           grep -qi "sqlite" libs.txt || { echo "ERREUR : bibliothèque SQLite absente"; exit 1; }
+          echo "== Signature"
+          "$TOOLS/apksigner" verify --print-certs "$APK" | tee signer.txt
+          if [ -n "$COFFRE_KEY_PASSWORD" ] && ! grep -q "CN=Coffre" signer.txt; then
+            echo "ERREUR : APK non signé avec la clé personnelle"; exit 1
+          fi
           echo "== Taille"
           ls -lh "$APK"
 
@@ -64,3 +78,17 @@ jobs:
           name: coffre-apk
           path: coffre/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
+
+      - name: Publier (lien fixe pour le téléphone)
+        if: env.COFFRE_KEY_PASSWORD != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          cp build/app/outputs/flutter-apk/app-release.apk coffre.apk
+          gh release create "coffre-v$VERSION-${{ github.run_number }}" coffre.apk \
+            --target "${{ github.sha }}" \
+            --title "Coffre $VERSION (compilation ${{ github.run_number }})" \
+            --notes "Installer par-dessus la version précédente : les données sont conservées." \
+            --latest

@@ -7,12 +7,17 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Clé de signature personnelle (android/key.properties, jamais versionnée).
-// Sans elle, l'APK release est signé avec la clé de debug de la machine.
+// Signature, par ordre de priorité :
+// 1. android/key.properties (clé créée sur un PC, jamais versionnée) ;
+// 2. android/signing/coffre-release.p12 + variable COFFRE_KEY_PASSWORD
+//    (compilation GitHub : la clé est chiffrée, le mot de passe est un secret GitHub) ;
+// 3. clé de debug de la machine (tests uniquement).
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) load(FileInputStream(keystorePropertiesFile))
 }
+val ciKeystore = rootProject.file("signing/coffre-release.p12")
+val ciKeyPassword: String? = System.getenv("COFFRE_KEY_PASSWORD")?.takeIf { it.isNotBlank() }
 
 android {
     namespace = "be.perso.coffre"
@@ -43,16 +48,21 @@ android {
                 storeFile = file(keystoreProperties["storeFile"] as String)
                 storePassword = keystoreProperties["storePassword"] as String
             }
+        } else if (ciKeyPassword != null && ciKeystore.exists()) {
+            create("release") {
+                storeFile = ciKeystore
+                storeType = "pkcs12"
+                storePassword = ciKeyPassword
+                keyAlias = "coffre"
+                keyPassword = ciKeyPassword
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
         }
     }
 }
