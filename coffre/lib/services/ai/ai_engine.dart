@@ -1,4 +1,4 @@
-/// Moteur de génération : Claude (en ligne) ou Gemini Nano (sur le téléphone).
+/// Moteur de génération en ligne : Gemini (Google) ou Claude (Anthropic).
 abstract interface class AiEngine {
   Future<String> complete({
     required String system,

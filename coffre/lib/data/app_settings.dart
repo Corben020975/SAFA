@@ -24,12 +24,13 @@ class AppSettings extends ChangeNotifier {
   int morningMinutes = 9 * 60;
   int eveningMinutes = 18 * 60;
 
-  /// Moteur IA : Gemini Nano sur le téléphone (par défaut) ou Claude en ligne.
-  AiProvider aiProvider = AiProvider.nano;
+  /// Moteur IA : Gemini (offre gratuite, par défaut) ou Claude (payant).
+  AiProvider aiProvider = AiProvider.gemini;
 
   /// Assistant IA : données personnelles masquées avant envoi (par défaut).
   bool aiMask = true;
-  bool aiConsent = false;
+  bool aiConsent = false; // Claude
+  bool aiConsentGemini = false;
 
   /// Agenda du téléphone (Google Agenda synchronisé).
   bool agendaEnabled = false;
@@ -52,9 +53,10 @@ class AppSettings extends ChangeNotifier {
     morningMinutes = int.tryParse(p['morning'] ?? '') ?? 9 * 60;
     eveningMinutes = int.tryParse(p['evening'] ?? '') ?? 18 * 60;
     aiProvider =
-        AiProvider.values.asNameMap()[p['aiProvider']] ?? AiProvider.nano;
+        AiProvider.values.asNameMap()[p['aiProvider']] ?? AiProvider.gemini;
     aiMask = p['aiMask'] != 'false';
     aiConsent = p['aiConsent'] == 'true';
+    aiConsentGemini = p['aiConsentGemini'] == 'true';
     agendaEnabled = p['agendaEnabled'] == 'true';
     agendaCalendarId = int.tryParse(p['agendaCalendarId'] ?? '');
     agendaCalendarName = p['agendaCalendarName'];
@@ -94,8 +96,25 @@ class AppSettings extends ChangeNotifier {
       _set(() => aiProvider = value, 'aiProvider', value.name);
   Future<void> setAiMask(bool value) =>
       _set(() => aiMask = value, 'aiMask', '$value');
-  Future<void> setAiConsent(bool value) =>
-      _set(() => aiConsent = value, 'aiConsent', '$value');
+
+  /// Accord donné une fois par moteur (les conditions diffèrent).
+  bool consentFor(AiProvider provider) => switch (provider) {
+    AiProvider.gemini => aiConsentGemini,
+    AiProvider.claude => aiConsent,
+  };
+  Future<void> setAiConsent(AiProvider provider, bool value) =>
+      switch (provider) {
+        AiProvider.gemini => _set(
+          () => aiConsentGemini = value,
+          'aiConsentGemini',
+          '$value',
+        ),
+        AiProvider.claude => _set(
+          () => aiConsent = value,
+          'aiConsent',
+          '$value',
+        ),
+      };
   Future<void> setAgendaEnabled(bool value) =>
       _set(() => agendaEnabled = value, 'agendaEnabled', '$value');
   Future<void> setAgendaCalendar(int id, String name) async {
@@ -140,4 +159,11 @@ class AppSettings extends ChangeNotifier {
   }
 }
 
-enum AiProvider { nano, claude }
+enum AiProvider {
+  gemini('Gemini', 'Google'),
+  claude('Claude', 'Anthropic');
+
+  const AiProvider(this.label, this.company);
+  final String label;
+  final String company;
+}

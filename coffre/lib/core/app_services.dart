@@ -4,7 +4,6 @@ import '../data/app_settings.dart';
 import '../data/backup_service.dart';
 import '../data/database.dart';
 import '../services/ai/ai_assistant.dart';
-import '../services/ai/nano_client.dart';
 import '../services/notification_service.dart';
 import '../services/notion_service.dart';
 import '../services/secret_store.dart';
@@ -23,7 +22,6 @@ class AppServices {
     required this.backup,
     required this.secrets,
     required this.ai,
-    required this.nano,
     required this.notion,
     required this.encryptionActive,
     this.setAsideDbFile,
@@ -37,7 +35,6 @@ class AppServices {
   final BackupService backup;
   final SecretStore secrets;
   final AiAssistant ai;
-  final NanoClient nano;
   final NotionService notion;
   final bool encryptionActive;
   final String? setAsideDbFile;

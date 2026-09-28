@@ -6,25 +6,30 @@ import '../../data/app_settings.dart';
 import '../../data/database.dart';
 import '../../data/enums.dart';
 import '../../services/ai/ai_assistant.dart';
-import '../../services/ai/nano_client.dart';
 import '../../services/secret_store.dart';
 import '../theme.dart';
 
-/// Vérifie le moteur avant toute demande. En ligne : clé + accord,
-/// rien ne part sans ce passage. Sur le téléphone : modèle téléchargé.
+/// Vérifie clé + accord avant tout envoi. Rien ne part sans ce passage.
 Future<bool> ensureAiReady(BuildContext context) async {
   final s = AppScope.of(context);
-  if (s.settings.aiProvider == AiProvider.nano) return ensureNanoReady(context);
-  if (!await s.secrets.has(SecretStore.aiKey)) {
+  final provider = s.settings.aiProvider;
+  final keyName = provider == AiProvider.gemini
+      ? SecretStore.geminiKey
+      : SecretStore.aiKey;
+  if (!await s.secrets.has(keyName)) {
     if (!context.mounted) return false;
     final go = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
         title: const Text('Assistant IA à configurer'),
-        content: const Text(
-          'Ajoute ta clé API Claude dans Réglages › Assistant IA. '
-          'Elle se crée sur console.anthropic.com (paiement à l\'usage).',
-        ),
+        content: Text(switch (provider) {
+          AiProvider.gemini =>
+            'Ajoute ta clé API Gemini dans Réglages › Assistant IA. '
+                'Elle se crée gratuitement sur aistudio.google.com.',
+          AiProvider.claude =>
+            'Ajoute ta clé API Claude dans Réglages › Assistant IA. '
+                'Elle se crée sur console.anthropic.com (paiement à l\'usage).',
+        }),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(d, false),
@@ -42,17 +47,19 @@ Future<bool> ensureAiReady(BuildContext context) async {
     }
     return false;
   }
-  if (s.settings.aiConsent) return true;
+  if (s.settings.consentFor(provider)) return true;
   if (!context.mounted) return false;
   final ok = await showDialog<bool>(
     context: context,
     builder: (d) => AlertDialog(
       title: const Text('Avant le premier envoi'),
-      content: const Text(
-        'L\'assistant envoie le texte choisi à Claude (Anthropic) via Internet, '
-        'uniquement quand tu le demandes.\n\n'
+      content: Text(
+        'L\'assistant envoie le texte choisi à ${provider.label} (${provider.company}) '
+        'via Internet, uniquement quand tu le demandes.\n\n'
         'Avant l\'envoi, Coffre masque les noms précédés d\'une civilité (Mme, M., Dr…), '
         'les n° de registre national, téléphones, e-mails et IBAN, puis les remet dans la réponse.\n\n'
+        '${provider == AiProvider.gemini ? 'Offre gratuite : Google peut conserver et relire les textes '
+                  'pour améliorer ses services.\n\n' : ''}'
         'Secret professionnel : n\'y mets pas d\'information sensible sur un bénéficiaire '
         '(santé, situation sociale détaillée).',
       ),
@@ -68,150 +75,8 @@ Future<bool> ensureAiReady(BuildContext context) async {
       ],
     ),
   );
-  if (ok == true) await s.settings.setAiConsent(true);
+  if (ok == true) await s.settings.setAiConsent(provider, true);
   return ok == true;
-}
-
-/// Gemini Nano : propose le téléchargement du modèle s'il manque.
-Future<bool> ensureNanoReady(BuildContext context) async {
-  final nano = AppScope.of(context).nano;
-  final status = await nano.status();
-  if (status == NanoStatus.available) return true;
-  if (!context.mounted) return false;
-  if (status == NanoStatus.unavailable) {
-    final go = await showDialog<bool>(
-      context: context,
-      builder: (d) => AlertDialog(
-        title: const Text('Gemini Nano indisponible'),
-        content: Text(
-          'Le téléphone ne donne pas encore accès à Gemini Nano. '
-          'Mets à jour AICore et « Services système Google Play » '
-          '(Paramètres › Sécurité et confidentialité › Mises à jour), '
-          'puis réessaie. Tu peux aussi passer sur Claude dans Réglages › Assistant IA.'
-          '${nano.lastError == null ? '' : '\n\nDétail : ${nano.lastError}'}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(d, false),
-            child: const Text('OK'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(d, true),
-            child: const Text('Réglages'),
-          ),
-        ],
-      ),
-    );
-    if (go == true && context.mounted) {
-      Navigator.of(context).pushNamed('/settings');
-    }
-    return false;
-  }
-  if (!nano.downloading) {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (d) => AlertDialog(
-        title: const Text('Installer Gemini Nano ?'),
-        content: const Text(
-          'Le modèle IA se télécharge une seule fois sur le téléphone '
-          '(1 à 2 Go, en Wi-Fi de préférence). Ensuite il fonctionne hors ligne : '
-          'rien ne quitte ton téléphone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(d, false),
-            child: const Text('Plus tard'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(d, true),
-            child: const Text('Télécharger'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !context.mounted) return false;
-  }
-  final done = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => NanoDownloadDialog(nano: nano),
-  );
-  return done == true;
-}
-
-/// Progression du téléchargement ; « Continuer sans attendre » le laisse
-/// tourner en arrière-plan tant que Coffre reste ouvert.
-class NanoDownloadDialog extends StatefulWidget {
-  const NanoDownloadDialog({super.key, required this.nano});
-  final NanoClient nano;
-
-  @override
-  State<NanoDownloadDialog> createState() => _NanoDownloadDialogState();
-}
-
-class _NanoDownloadDialogState extends State<NanoDownloadDialog> {
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    // Après l'affichage : la progression notifie d'autres widgets.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
-  }
-
-  void _start() {
-    widget.nano.download().then(
-      (_) {
-        if (mounted) Navigator.pop(context, true);
-      },
-      onError: (Object e) {
-        if (mounted) setState(() => _error = '$e');
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return AlertDialog(
-      title: const Text('Téléchargement de Gemini Nano'),
-      content: _error != null
-          ? Text(_error!, style: TextStyle(color: Palette.of(context).coral))
-          : ValueListenableBuilder<NanoProgress?>(
-              valueListenable: widget.nano.progress,
-              builder: (context, p, _) {
-                final ratio = p?.ratio;
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    LinearProgressIndicator(value: ratio),
-                    const SizedBox(height: 12),
-                    Text(
-                      ratio == null
-                          ? 'Préparation…'
-                          : '${(ratio * 100).round()} % · ${_mb(p!.done)} / ${_mb(p.total)}',
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Garde Coffre ouvert. Tu peux continuer à l\'utiliser pendant ce temps.',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ],
-                );
-              },
-            ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text(_error != null ? 'Fermer' : 'Continuer sans attendre'),
-        ),
-      ],
-    );
-  }
-
-  static String _mb(int bytes) => '${(bytes / 1e6).round()} Mo';
 }
 
 /// Feuille « Assistant IA » d'un élément.
@@ -308,7 +173,7 @@ class _AiSheetState extends State<_AiSheet> {
     final p = Palette.of(context);
     final theme = Theme.of(context);
     final settings = AppScope.of(context).settings;
-    final onDevice = settings.aiProvider == AiProvider.nano;
+    final name = settings.aiProvider.label;
     final masked = settings.aiMask;
 
     return Padding(
@@ -330,13 +195,11 @@ class _AiSheetState extends State<_AiSheet> {
             ),
             const SizedBox(height: 6),
             Text(
-              onDevice
-                  ? 'Gemini Nano · sur le téléphone, rien n\'est envoyé'
-                  : masked
-                  ? 'Claude · données personnelles masquées avant envoi'
-                  : 'Claude · masquage désactivé dans Réglages',
+              masked
+                  ? '$name · données personnelles masquées avant envoi'
+                  : '$name · masquage désactivé dans Réglages',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: onDevice || masked ? p.muted : p.coral,
+                color: masked ? p.muted : p.coral,
               ),
             ),
             const SizedBox(height: 18),

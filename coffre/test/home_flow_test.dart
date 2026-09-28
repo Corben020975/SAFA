@@ -6,7 +6,7 @@ import 'package:coffre/data/database.dart';
 import 'package:coffre/data/enums.dart';
 import 'package:coffre/services/ai/ai_assistant.dart';
 import 'package:coffre/services/ai/claude_client.dart';
-import 'package:coffre/services/ai/nano_client.dart';
+import 'package:coffre/services/ai/gemini_client.dart';
 import 'package:coffre/services/launch_router.dart';
 import 'package:coffre/services/notion_service.dart';
 import 'package:coffre/services/secret_store.dart';
@@ -78,8 +78,11 @@ void main() {
       system: system,
       backup: BackupService(db, system, notifications),
       secrets: SecretStore(),
-      ai: AiAssistant(ClaudeClient(() async => null), NanoClient(), settings),
-      nano: NanoClient(),
+      ai: AiAssistant(
+        ClaudeClient(() async => null),
+        GeminiClient(() async => null),
+        settings,
+      ),
       notion: NotionService(() async => null),
       encryptionActive: false,
     );

@@ -10,11 +10,11 @@ Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrée
 - **Plus tard** sur chaque carte, **pré-alerte** 1 h 30 avant un rendez-vous, report 5/15/60 min depuis la notification.
 - **Rappel réglable** : date et heure modifiables séparément, heures « matin » et « soir » par défaut au choix (Réglages).
 - **Assistant IA** : synthétiser, développer, découper en tâches, reformuler, rédiger un message, brief du jour.
-  Au choix : **Gemini Nano** sur le téléphone (gratuit, hors ligne) ou **Claude** en ligne (payant, plus puissant).
+  Au choix : **Gemini** (Google, clé gratuite) ou **Claude** (Anthropic, payant à l'usage).
 - **Agenda Google** : rendez-vous du jour dans *Jour*, ajout d'un rappel à l'agenda (via l'agenda du téléphone, sans connexion Google).
 - **Notion** (optionnel) : envoyer un élément dans une base Notion.
 
-- **Aucun compte, aucun serveur, aucune statistique.** Internet sert uniquement à Claude et à Notion, quand tu le demandes.
+- **Aucun compte, aucun serveur, aucune statistique.** Internet sert uniquement à l'IA et à Notion, quand tu le demandes.
 - **Base chiffrée** (SQLite3 Multiple Ciphers, ChaCha20). La clé est générée au premier lancement et reste dans le Keystore Android.
 - **Sauvegarde** : export JSON (restaurable) ou CSV (Excel), à l'endroit que tu choisis. ⚠️ Ces fichiers ne sont pas chiffrés.
 
@@ -148,16 +148,14 @@ L'assistant « Rappels fiables » s'ouvre au premier lancement. Il est aussi acc
 
 Tout est optionnel et se règle dans *Réglages*. Les clés restent dans le Keystore du téléphone et ne sont jamais exportées.
 
-**Assistant IA sur le téléphone (Gemini Nano, par défaut)**
-1. Vérifier qu'**AICore** est présent : *Paramètres › Applications* › filtre › *Afficher les applications système* › AICore.
-2. *Réglages › Assistant IA* › *Sur le téléphone* › **Télécharger** (1 à 2 Go, une seule fois, en Wi-Fi). Garder Coffre ouvert pendant le téléchargement.
-3. Ensuite tout fonctionne hors ligne : rien ne quitte le téléphone. Réponses plus courtes qu'avec Claude.
+**Assistant IA avec Gemini (gratuit, par défaut)**
+1. Sur [aistudio.google.com](https://aistudio.google.com) (compte Google, sans carte bancaire) : *Get API key* › *Créer une clé API*, copier la clé (`AIza…`).
+2. *Réglages › Assistant IA* › *Gemini (gratuit)* › *Clé API Gemini* : coller la clé, puis *Tester*.
+3. Limites de l'offre gratuite : quelques demandes par minute et un plafond par jour. Google peut conserver et relire les textes de l'offre gratuite : garder le masquage activé.
 
-Si Coffre affiche « indisponible » : mettre à jour AICore et *Paramètres › Sécurité et confidentialité › Mises à jour › Mise à jour du système Google Play*, redémarrer, réessayer.
-
-**Assistant IA en ligne (Claude, optionnel)**
+**Assistant IA avec Claude (payant, optionnel)**
 1. Sur [console.anthropic.com](https://console.anthropic.com) : créer un compte, ajouter du crédit (paiement à l'usage), *API Keys › Create Key*.
-2. *Réglages › Assistant IA* › *Claude en ligne* › *Clé API Claude* : coller la clé, puis *Tester*.
+2. *Réglages › Assistant IA* › *Claude (payant)* › *Clé API Claude* : coller la clé, puis *Tester*.
 3. Dans un élément : bouton ✦ ou *Assistant IA*. Dans *Jour* : icône ✦ pour le brief du jour.
 
 Avant chaque envoi, Coffre masque les noms précédés d'une civilité (Mme, M., Dr…), n° de registre national, téléphones, e-mails et IBAN, puis les remet dans la réponse. Le masquage ne détecte pas tout : pas d'information sensible sur un bénéficiaire (secret professionnel).
@@ -206,11 +204,11 @@ lib/
   core/                   services partagés, normalisation texte, formats de date
   data/                   Drift (tables, requêtes), chiffrement, réglages, sauvegarde
   services/               notifications (+ isolate snooze), dictée, analyse de saisie, dates, vue Jour, pont Android
-  services/ai/            Gemini Nano (pont Android), client Claude (HTTP), assistant, masquage
+  services/ai/            clients Gemini et Claude (HTTP), assistant, masquage des données
   services/notion_service.dart   API Notion (jeton d'intégration)
   ui/screens/             accueil (Jour + Flux), Capture, Détail, Réglages, Rappels fiables
   ui/views/               vues Jour et Flux, agenda du jour, bandeaux d'alerte
   ui/widgets/             carte, ligne, barre de capture, sélecteurs, rappel, tags, micro, assistant IA
-android/app/src/main/     Manifest, MainActivity.kt, NanoBridge.kt (Gemini Nano), widget, icônes
+android/app/src/main/     Manifest, MainActivity.kt, widget, icônes
 test/                     base + chiffrement, parseur de dates, parcours Inbox, IA, Notion, masquage
 ```

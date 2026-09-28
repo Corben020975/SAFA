@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:coffre/app.dart';
 import 'package:coffre/core/app_services.dart';
 import 'package:coffre/data/app_settings.dart';
@@ -7,7 +5,7 @@ import 'package:coffre/data/backup_service.dart';
 import 'package:coffre/data/database.dart';
 import 'package:coffre/services/ai/ai_assistant.dart';
 import 'package:coffre/services/ai/claude_client.dart';
-import 'package:coffre/services/ai/nano_client.dart';
+import 'package:coffre/services/ai/gemini_client.dart';
 import 'package:coffre/services/launch_router.dart';
 import 'package:coffre/services/notion_service.dart';
 import 'package:coffre/services/secret_store.dart';
@@ -61,32 +59,17 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('Réglages IA : moteur, téléchargement de Gemini Nano', (
+  testWidgets('Réglages IA : Gemini par défaut, bascule vers Claude', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
-    // Pont Android simulé : modèle à télécharger, téléchargement piloté.
-    var status = 'downloadable';
-    final download = Completer<bool>();
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    messenger.setMockMethodCallHandler(
-      const MethodChannel('coffre/nano'),
-      (call) async => switch (call.method) {
-        'status' => {'status': status},
-        'download' => download.future,
-        _ => null,
-      },
-    );
-
     final db = AppDatabase(NativeDatabase.memory());
     final settings = AppSettings(db)..onboardingDone = true;
     final system = SystemChannel();
     final notifications = NotificationService();
-    final nano = NanoClient();
     final services = AppServices(
       db: db,
       settings: settings,
@@ -95,8 +78,11 @@ void main() {
       system: system,
       backup: BackupService(db, system, notifications),
       secrets: SecretStore(),
-      ai: AiAssistant(ClaudeClient(() async => null), nano, settings),
-      nano: nano,
+      ai: AiAssistant(
+        ClaudeClient(() async => null),
+        GeminiClient(() async => null),
+        settings,
+      ),
       notion: NotionService(() async => null),
       encryptionActive: false,
     );
@@ -112,58 +98,22 @@ void main() {
     await settle(tester);
     final list = find.byType(Scrollable).hitTestable().first;
     await tester.scrollUntilVisible(
-      find.text('Gemini Nano'),
+      find.text('Clé API Gemini'),
       200,
       scrollable: list,
     );
     await settle(tester);
-    expect(find.text('Modèle à télécharger (1 à 2 Go)'), findsOneWidget);
+    expect(settings.aiProvider, AiProvider.gemini);
+    expect(find.text('Gemini (gratuit)'), findsOneWidget);
+    expect(find.textContaining('offre gratuite avec limites'), findsOneWidget);
 
-    // Bascule vers Claude puis retour : le choix est enregistré.
-    await tester.ensureVisible(find.text('Claude en ligne'));
+    await tester.ensureVisible(find.text('Claude (payant)'));
     await settle(tester);
-    await tester.tap(find.text('Claude en ligne'));
+    await tester.tap(find.text('Claude (payant)'));
     await settle(tester);
     expect(settings.aiProvider, AiProvider.claude);
-    await tester.scrollUntilVisible(
-      find.text('Clé API Claude'),
-      200,
-      scrollable: list,
-    );
-    await tester.ensureVisible(find.text('Sur le téléphone'));
-    await settle(tester);
-    await tester.tap(find.text('Sur le téléphone'));
-    await settle(tester);
-    expect(settings.aiProvider, AiProvider.nano);
-
-    // Téléchargement : progression affichée, puis modèle prêt.
-    await tester.ensureVisible(find.text('Télécharger'));
-    await settle(tester);
-    await tester.tap(find.text('Télécharger'));
-    await settle(tester);
-    expect(find.text('Téléchargement de Gemini Nano'), findsOneWidget);
-    await tester.runAsync(
-      () => messenger.handlePlatformMessage(
-        'coffre/nano',
-        const StandardMethodCodec().encodeMethodCall(
-          const MethodCall('progress', {
-            'done': 420000000,
-            'total': 1000000000,
-          }),
-        ),
-        (_) {},
-      ),
-    );
-    await settle(tester);
-    expect(find.text('42 % · 420 Mo / 1000 Mo'), findsOneWidget);
-
-    status = 'available';
-    download.complete(true);
-    await settle(tester);
-    await settle(tester);
-    expect(find.text('Téléchargement de Gemini Nano'), findsNothing);
-    expect(find.text('Prêt · fonctionne hors ligne'), findsOneWidget);
-    expect(find.text('Tester'), findsOneWidget);
+    expect(find.text('Clé API Claude'), findsOneWidget);
+    expect(find.text('Clé API Gemini'), findsNothing);
     await tester.runAsync(db.close);
   });
 }

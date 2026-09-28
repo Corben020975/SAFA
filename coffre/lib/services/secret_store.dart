@@ -1,10 +1,11 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Clés d'API (Claude, Notion) : Keystore Android, jamais dans la base ni
-/// dans les exports.
+/// Clés d'API (Gemini, Claude, Notion) : Keystore Android, jamais dans la
+/// base ni dans les exports.
 class SecretStore {
   static const _storage = FlutterSecureStorage(aOptions: AndroidOptions());
   static const aiKey = 'coffre_claude_api_key';
+  static const geminiKey = 'coffre_gemini_api_key';
   static const notionKey = 'coffre_notion_token';
 
   final Map<String, String?> _cache = {};

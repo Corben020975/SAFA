@@ -6,10 +6,9 @@ import 'package:coffre/data/enums.dart';
 import 'package:coffre/services/ai/ai_assistant.dart';
 import 'package:coffre/services/ai/ai_engine.dart';
 import 'package:coffre/services/ai/claude_client.dart';
-import 'package:coffre/services/ai/nano_client.dart';
+import 'package:coffre/services/ai/gemini_client.dart';
 import 'package:coffre/services/notion_service.dart';
 import 'package:drift/native.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -34,8 +33,6 @@ Item _item({
 );
 
 class _FakeEngine implements AiEngine {
-  _FakeEngine([this.answer = 'ok']);
-  final String answer;
   String? system;
   String? prompt;
   String? effort;
@@ -51,13 +48,11 @@ class _FakeEngine implements AiEngine {
     this.system = system;
     this.prompt = prompt;
     this.effort = effort;
-    return answer;
+    return 'ok';
   }
 }
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
   group('Claude', () {
     test(
       'requête : modèle, repli serveur, en-têtes, et données masquées',
@@ -224,69 +219,118 @@ void main() {
     });
   });
 
-  group('Gemini Nano', () {
-    const channel = MethodChannel('coffre/nano');
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    tearDown(() => messenger.setMockMethodCallHandler(channel, null));
-
-    test('par défaut : moteur local, texte envoyé tel quel', () async {
+  group('Gemini', () {
+    test('requête, en-têtes, masquage et réponse', () async {
+      late http.Request sent;
+      final client = GeminiClient(
+        () async => 'AIza-test',
+        client: MockClient((request) async {
+          sent = request;
+          return http.Response.bytes(
+            utf8.encode(
+              jsonEncode({
+                'candidates': [
+                  {
+                    'finishReason': 'STOP',
+                    'content': {
+                      'parts': [
+                        {'text': 'réflexion', 'thought': true},
+                        {'text': '- Appeler [PERSONNE 1] '},
+                        {'text': 'demain'},
+                      ],
+                    },
+                  },
+                ],
+              }),
+            ),
+            200,
+          );
+        }),
+      );
       final db = AppDatabase(NativeDatabase.memory());
       final settings = AppSettings(db);
       await settings.load();
       final claude = _FakeEngine();
-      final nano = _FakeEngine('- Appeler Mme Dupont');
-      final assistant = AiAssistant(claude, nano, settings);
+      final assistant = AiAssistant(claude, client, settings);
 
-      expect(settings.aiProvider, AiProvider.nano);
-      final answer = await assistant.run(AiAction.develop, _item());
+      expect(settings.aiProvider, AiProvider.gemini);
+      final answer = await assistant.run(AiAction.steps, _item());
 
       expect(claude.calls, 0);
-      expect(nano.prompt, contains('Mme Dupont'));
-      expect(nano.system, isNot(contains('[PERSONNE')));
-      expect(nano.system, contains('80 à 150'));
-      expect(nano.effort, 'medium');
-      expect(answer, '- Appeler Mme Dupont');
+      expect(
+        sent.url.toString(),
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
+      );
+      expect(sent.headers['x-goog-api-key'], 'AIza-test');
+      final body = jsonDecode(sent.body) as Map<String, dynamic>;
+      expect(
+        ((body['systemInstruction'] as Map)['parts'] as List).single['text'],
+        contains('[PERSONNE 1]'),
+      );
+      expect(sent.body, isNot(contains('Dupont')));
+      expect(answer, '- Appeler Mme Dupont demain');
       await db.close();
     });
 
-    test('statut, génération et erreurs du pont Android', () async {
-      final calls = <MethodCall>[];
-      messenger.setMockMethodCallHandler(channel, (call) async {
-        calls.add(call);
-        switch (call.method) {
-          case 'status':
-            return {'status': 'downloadable'};
-          case 'generate':
-            final prompt = (call.arguments as Map)['prompt'] as String;
-            if (prompt == 'bg') {
-              throw PlatformException(
-                code: 'generate',
-                message: 'Inference in background is not allowed',
-              );
-            }
-            return '  Réponse locale  ';
-        }
-        return null;
-      });
-      final nano = NanoClient();
-
-      expect(await nano.status(), NanoStatus.downloadable);
-      expect(
-        await nano.complete(system: 's', prompt: 'x' * 7000, effort: 'medium'),
-        'Réponse locale',
+    test('modèle retiré : repli sur le suivant', () async {
+      final urls = <String>[];
+      final client = GeminiClient(
+        () async => 'k',
+        client: MockClient((request) async {
+          urls.add(request.url.pathSegments.last);
+          if (urls.length == 1) {
+            return http.Response(
+              '{"error":{"code":404,"message":"not found"}}',
+              404,
+            );
+          }
+          return http.Response(
+            '{"candidates":[{"finishReason":"MAX_TOKENS","content":{"parts":[{"text":"OK"}]}}]}',
+            200,
+          );
+        }),
       );
-      final args = calls.last.arguments as Map;
-      expect(args['maxTokens'], 1024);
-      expect((args['prompt'] as String).length, NanoClient.maxInputChars + 1);
+      expect(await client.complete(system: 's', prompt: 'p'), 'OK…');
+      expect(urls, [
+        'gemini-flash-latest:generateContent',
+        'gemini-2.5-flash:generateContent',
+      ]);
+    });
+
+    test('erreurs traduites', () {
       expect(
-        () => nano.complete(system: 's', prompt: 'bg'),
-        throwsA(predicate((e) => '$e'.contains('Garde Coffre ouvert'))),
+        () => GeminiClient.parse(
+          400,
+          '{"error":{"code":400,"message":"API key not valid.","status":"INVALID_ARGUMENT",'
+          '"details":[{"reason":"API_KEY_INVALID"}]}}',
+        ),
+        throwsA(predicate((e) => '$e'.contains('Clé API refusée'))),
+      );
+      expect(
+        () => GeminiClient.parse(429, '{"error":{"code":429}}'),
+        throwsA(predicate((e) => '$e'.contains('Quota gratuit'))),
+      );
+      expect(
+        () => GeminiClient.parse(
+          200,
+          '{"promptFeedback":{"blockReason":"SAFETY"}}',
+        ),
+        throwsA(predicate((e) => '$e'.contains('bloqué'))),
+      );
+      expect(
+        () => GeminiClient.parse(
+          200,
+          '{"candidates":[{"finishReason":"SAFETY","content":{"parts":[]}}]}',
+        ),
+        throwsA(predicate((e) => '$e'.contains('bloqué'))),
       );
     });
 
-    test('hors Android : indisponible, sans planter', () async {
-      expect(await NanoClient().status(), NanoStatus.unavailable);
+    test('sans clé : message clair', () {
+      expect(
+        () => GeminiClient(() async => null).complete(system: 's', prompt: 'p'),
+        throwsA(predicate((e) => '$e'.contains('clé API Gemini'))),
+      );
     });
   });
 }

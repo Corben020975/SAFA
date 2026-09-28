@@ -13,7 +13,7 @@ import 'data/backup_service.dart';
 import 'data/db_opener.dart';
 import 'services/ai/ai_assistant.dart';
 import 'services/ai/claude_client.dart';
-import 'services/ai/nano_client.dart';
+import 'services/ai/gemini_client.dart';
 import 'services/launch_router.dart';
 import 'services/notification_service.dart';
 import 'services/notion_service.dart';
@@ -47,7 +47,6 @@ Future<void> main() async {
     );
 
     final secrets = SecretStore();
-    final nano = NanoClient();
     final services = AppServices(
       db: db,
       settings: settings,
@@ -56,10 +55,9 @@ Future<void> main() async {
       system: system,
       backup: BackupService(db, system, notifications),
       secrets: secrets,
-      nano: nano,
       ai: AiAssistant(
         ClaudeClient(() => secrets.read(SecretStore.aiKey)),
-        nano,
+        GeminiClient(() => secrets.read(SecretStore.geminiKey)),
         settings,
       ),
       notion: NotionService(() => secrets.read(SecretStore.notionKey)),

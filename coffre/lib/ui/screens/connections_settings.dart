@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/app_services.dart';
 import '../../core/reminder_defaults.dart';
 import '../../data/app_settings.dart';
-import '../../services/ai/nano_client.dart';
 import '../../services/notion_service.dart';
 import '../../services/secret_store.dart';
 import '../../services/system_channel.dart';
 import '../theme.dart';
-import '../widgets/ai_sheet.dart';
 
 /// Heures utilisées par « demain », « lundi », « ce soir » et les raccourcis.
 class DefaultTimesTiles extends StatelessWidget {
@@ -114,10 +112,14 @@ class AiSettingsSection extends StatefulWidget {
 
 class _AiSettingsSectionState extends State<AiSettingsSection> {
   late final AppServices _s = AppScope.of(context);
-  bool? _hasKey;
-  NanoStatus? _nano;
+  final Map<AiProvider, bool> _hasKey = {};
   bool _testing = false;
   bool _started = false;
+
+  static String _keyName(AiProvider provider) => switch (provider) {
+    AiProvider.gemini => SecretStore.geminiKey,
+    AiProvider.claude => SecretStore.aiKey,
+  };
 
   @override
   void didChangeDependencies() {
@@ -128,36 +130,28 @@ class _AiSettingsSectionState extends State<AiSettingsSection> {
   }
 
   Future<void> _refresh() async {
-    final has = await _s.secrets.has(SecretStore.aiKey);
-    final nano = await _s.nano.status();
-    if (mounted) {
-      setState(() {
-        _hasKey = has;
-        _nano = nano;
-      });
+    for (final provider in AiProvider.values) {
+      final has = await _s.secrets.has(_keyName(provider));
+      if (mounted) setState(() => _hasKey[provider] = has);
     }
   }
 
-  Future<void> _download() async {
-    await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => NanoDownloadDialog(nano: _s.nano),
-    );
-    await _refresh();
-  }
-
-  Future<void> _editKey() async {
+  Future<void> _editKey(AiProvider provider) async {
     final value = await _askSecret(
       context,
-      title: 'Clé API Claude',
-      hint: 'sk-ant-…',
-      help:
+      title: 'Clé API ${provider.label}',
+      hint: provider == AiProvider.gemini ? 'AIza…' : 'sk-ant-…',
+      help: switch (provider) {
+        AiProvider.gemini =>
+          'Gratuit : aistudio.google.com › Get API key › Créer une clé API '
+              '(compte Google, sans carte bancaire). Elle reste chiffrée dans le téléphone.',
+        AiProvider.claude =>
           'Crée une clé sur console.anthropic.com › API Keys (paiement à l\'usage, '
-          'quelques centimes par demande). Elle reste chiffrée dans le téléphone.',
+              'quelques centimes par demande). Elle reste chiffrée dans le téléphone.',
+      },
     );
     if (value == null) return;
-    await _s.secrets.write(SecretStore.aiKey, value);
+    await _s.secrets.write(_keyName(provider), value);
     await _refresh();
   }
 
@@ -165,7 +159,7 @@ class _AiSettingsSectionState extends State<AiSettingsSection> {
     setState(() => _testing = true);
     try {
       await _s.ai.ask('Réponds uniquement : OK');
-      final name = _s.ai.onDevice ? 'Gemini Nano' : 'Claude';
+      final name = _s.ai.provider.label;
       if (mounted) _snack(context, '$name répond. L\'assistant est prêt.');
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -174,120 +168,81 @@ class _AiSettingsSectionState extends State<AiSettingsSection> {
     }
   }
 
-  Widget get _testButton => _testing
-      ? const SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        )
-      : TextButton(onPressed: _test, child: const Text('Tester'));
-
-  List<Widget> _nanoTiles() {
-    final status = _nano;
-    final Widget? action = switch (status) {
-      null => null,
-      NanoStatus.available => _testButton,
-      NanoStatus.downloadable || NanoStatus.downloading => FilledButton.tonal(
-        onPressed: _download,
-        child: Text(
-          status == NanoStatus.downloadable ? 'Télécharger' : 'Suivre',
-        ),
-      ),
-      NanoStatus.unavailable => TextButton(
-        onPressed: _refresh,
-        child: const Text('Réessayer'),
-      ),
-    };
-    return [
-      ListTile(
-        leading: const Icon(Icons.memory),
-        title: const Text('Gemini Nano'),
-        subtitle: ValueListenableBuilder<NanoProgress?>(
-          valueListenable: _s.nano.progress,
-          builder: (context, p, _) => Text(switch (status) {
-            null => '…',
-            NanoStatus.available => 'Prêt · fonctionne hors ligne',
-            NanoStatus.downloadable => 'Modèle à télécharger (1 à 2 Go)',
-            NanoStatus.downloading =>
-              p?.ratio == null
-                  ? 'Téléchargement en cours…'
-                  : 'Téléchargement : ${(p!.ratio! * 100).round()} %',
-            NanoStatus.unavailable =>
-              'Indisponible sur ce téléphone pour l\'instant',
-          }),
-        ),
-        trailing: action,
-      ),
-      const _Note(
-        'Gratuit et privé : le modèle tourne dans le téléphone, rien n\'est envoyé. '
-        'Plus modeste que Claude : réponses plus courtes, parfois moins précises.',
-      ),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
     final settings = _s.settings;
     return ListenableBuilder(
       listenable: settings,
-      builder: (context, _) => Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<AiProvider>(
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(
-                    value: AiProvider.nano,
-                    label: Text('Sur le téléphone'),
-                  ),
-                  ButtonSegment(
-                    value: AiProvider.claude,
-                    label: Text('Claude en ligne'),
-                  ),
-                ],
-                selected: {settings.aiProvider},
-                onSelectionChanged: (v) => settings.setAiProvider(v.first),
+      builder: (context, _) {
+        final provider = settings.aiProvider;
+        final hasKey = _hasKey[provider];
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<AiProvider>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(
+                      value: AiProvider.gemini,
+                      label: Text('Gemini (gratuit)'),
+                    ),
+                    ButtonSegment(
+                      value: AiProvider.claude,
+                      label: Text('Claude (payant)'),
+                    ),
+                  ],
+                  selected: {provider},
+                  onSelectionChanged: (v) => settings.setAiProvider(v.first),
+                ),
               ),
             ),
-          ),
-          if (settings.aiProvider == AiProvider.nano)
-            ..._nanoTiles()
-          else
-            ..._claudeTiles(settings),
-        ],
-      ),
+            ListTile(
+              leading: const Icon(Icons.key_outlined),
+              title: Text('Clé API ${provider.label}'),
+              subtitle: Text(
+                hasKey == null ? '…' : (hasKey ? 'Configurée' : 'À ajouter'),
+              ),
+              onTap: () => _editKey(provider),
+              trailing: hasKey == true
+                  ? (_testing
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : TextButton(
+                            onPressed: _test,
+                            child: const Text('Tester'),
+                          ))
+                  : null,
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.shield_outlined),
+              title: const Text('Masquer les données personnelles'),
+              subtitle: const Text(
+                'Noms avec civilité (Mme Dupont), n° national, téléphone, e-mail, IBAN : '
+                'remplacés avant l\'envoi, remis dans la réponse.',
+              ),
+              value: settings.aiMask,
+              onChanged: settings.setAiMask,
+            ),
+            _Note(switch (provider) {
+              AiProvider.gemini =>
+                'Gemini Flash (Google), offre gratuite avec limites par minute et par jour. '
+                    'Google peut conserver et relire les textes de l\'offre gratuite : garde le '
+                    'masquage activé, pas de détail sensible sur un bénéficiaire.',
+              AiProvider.claude =>
+                'Claude Opus 5 (Anthropic), payant à l\'usage. Rien n\'est envoyé sans ton '
+                    'geste. Secret professionnel : pas de détail sensible sur un bénéficiaire.',
+            }),
+          ],
+        );
+      },
     );
   }
-
-  List<Widget> _claudeTiles(AppSettings settings) => [
-    ListTile(
-      leading: const Icon(Icons.key_outlined),
-      title: const Text('Clé API Claude'),
-      subtitle: Text(
-        _hasKey == null ? '…' : (_hasKey! ? 'Configurée' : 'À ajouter'),
-      ),
-      onTap: _editKey,
-      trailing: _hasKey == true ? _testButton : null,
-    ),
-    SwitchListTile(
-      secondary: const Icon(Icons.shield_outlined),
-      title: const Text('Masquer les données personnelles'),
-      subtitle: const Text(
-        'Noms avec civilité (Mme Dupont), n° national, téléphone, e-mail, IBAN : '
-        'remplacés avant l\'envoi, remis dans la réponse.',
-      ),
-      value: settings.aiMask,
-      onChanged: settings.setAiMask,
-    ),
-    const _Note(
-      'Modèle Claude Opus 5, payant à l\'usage. Rien n\'est envoyé sans ton geste : bouton ✦ '
-      'sur un élément ou « Brief du jour ». Secret professionnel : pas de détail sensible '
-      'sur un bénéficiaire.',
-    ),
-  ];
 }
 
 class AgendaSettingsSection extends StatelessWidget {

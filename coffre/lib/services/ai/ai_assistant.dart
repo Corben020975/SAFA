@@ -20,35 +20,31 @@ enum AiAction {
 }
 
 /// Assistant : n'envoie que ce que tu choisis, jamais automatiquement.
-/// Gemini Nano (sur le téléphone) ou Claude (en ligne) selon les réglages.
+/// Gemini (gratuit) ou Claude (payant) selon les réglages.
 class AiAssistant {
-  AiAssistant(this._claude, this._nano, this._settings);
+  AiAssistant(this._claude, this._gemini, this._settings);
   final AiEngine _claude;
-  final AiEngine _nano;
+  final AiEngine _gemini;
   final AppSettings _settings;
 
-  bool get onDevice => _settings.aiProvider == AiProvider.nano;
+  AiProvider get provider => _settings.aiProvider;
+  AiEngine get _engine => switch (provider) {
+    AiProvider.gemini => _gemini,
+    AiProvider.claude => _claude,
+  };
 
-  static const _intro =
+  static const _base =
       'Tu es l\'assistant de Coffre, le carnet personnel d\'un responsable de '
       'service social (SAFA, CPAS en Belgique). Réponds en français de Belgique, '
-      'ton direct, tutoiement, sans formule d\'introduction ni de conclusion.';
-
-  static const _placeholders =
-      ' Les marqueurs entre crochets comme [PERSONNE 1] remplacent des données '
+      'ton direct, tutoiement, sans formule d\'introduction ni de conclusion. '
+      'Les marqueurs entre crochets comme [PERSONNE 1] remplacent des données '
       'personnelles masquées : recopie-les tels quels, n\'invente jamais leur contenu.';
 
-  /// Le masquage n'existe qu'en ligne : inutile d'en parler au modèle local.
-  String get _base => onDevice ? _intro : '$_intro$_placeholders';
-
-  static String instruction(
-    AiAction action, {
-    bool compact = false,
-  }) => switch (action) {
+  static String instruction(AiAction action) => switch (action) {
     AiAction.summarize => 'Synthétise l\'essentiel en 3 à 5 puces courtes commençant par « - ». Pas de titre.',
     AiAction.develop =>
       'Développe cette idée ou cette note en un plan concret : objectif, étapes, '
-          'points d\'attention. ${compact ? '80 à 150' : '150 à 250'} mots, listes courtes.',
+          'points d\'attention. 150 à 250 mots, listes courtes.',
     AiAction.steps =>
       'Découpe en 3 à 8 étapes concrètes, une par ligne, chacune commençant par '
           '« - » puis un verbe d\'action. N\'écris rien d\'autre.',
@@ -72,7 +68,7 @@ class AiAssistant {
   ].join('\n');
 
   Future<String> run(AiAction action, Item item, {String? question}) {
-    final base = instruction(action, compact: onDevice);
+    final base = instruction(action);
     final request = action == AiAction.ask && (question ?? '').trim().isNotEmpty
         ? '$base\n\nMa demande : ${question!.trim()}'
         : base;
@@ -82,7 +78,7 @@ class AiAssistant {
   /// Brief du jour à partir des éléments ouverts (titres, dates, contextes).
   Future<String> dayBrief(List<Item> open, DateTime now) {
     final lines = open
-        .take(onDevice ? 20 : 40)
+        .take(40)
         .map((i) {
           final title = i.content.split('\n').first;
           final when = i.remindAt == null
@@ -104,14 +100,11 @@ class AiAssistant {
       _send(_base, question.trim(), AiAction.ask.effort);
 
   Future<String> _send(String system, String content, String effort) async {
-    if (onDevice) {
-      return _nano.complete(system: system, prompt: content, effort: effort);
-    }
     if (!_settings.aiMask) {
-      return _claude.complete(system: system, prompt: content, effort: effort);
+      return _engine.complete(system: system, prompt: content, effort: effort);
     }
     final p = Pseudonymizer();
-    final answer = await _claude.complete(
+    final answer = await _engine.complete(
       system: system,
       prompt: p.mask(content),
       effort: effort,
