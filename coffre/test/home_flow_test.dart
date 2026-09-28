@@ -4,7 +4,11 @@ import 'package:coffre/data/app_settings.dart';
 import 'package:coffre/data/backup_service.dart';
 import 'package:coffre/data/database.dart';
 import 'package:coffre/data/enums.dart';
+import 'package:coffre/services/ai/ai_assistant.dart';
+import 'package:coffre/services/ai/claude_client.dart';
 import 'package:coffre/services/launch_router.dart';
+import 'package:coffre/services/notion_service.dart';
+import 'package:coffre/services/secret_store.dart';
 import 'package:coffre/services/notification_service.dart';
 import 'package:coffre/services/speech_service.dart';
 import 'package:coffre/services/system_channel.dart';
@@ -72,6 +76,9 @@ void main() {
       speech: SpeechService(),
       system: system,
       backup: BackupService(db, system, notifications),
+      secrets: SecretStore(),
+      ai: AiAssistant(ClaudeClient(() async => null), settings),
+      notion: NotionService(() async => null),
       encryptionActive: false,
     );
 

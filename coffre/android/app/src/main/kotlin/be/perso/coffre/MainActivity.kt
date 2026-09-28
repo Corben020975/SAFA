@@ -1,7 +1,13 @@
 package be.perso.coffre
 
+import android.Manifest
 import android.content.ActivityNotFoundException
+import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.provider.CalendarContract
+import java.util.TimeZone
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -27,6 +33,9 @@ class MainActivity : FlutterActivity() {
     /** Résultat en attente du sélecteur de fichiers. */
     private var pendingResult: MethodChannel.Result? = null
     private var pendingBytes: ByteArray? = null
+
+    /** Réponse en attente de la demande de permission Agenda. */
+    private var pendingPermission: MethodChannel.Result? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Pas de relecture de l'action si l'activité est recréée ou relancée
@@ -91,6 +100,27 @@ class MainActivity : FlutterActivity() {
                 ),
             )
             "appVersion" -> result.success(appVersion())
+            "openUrl" -> result.success(
+                startSafely(Intent(Intent.ACTION_VIEW, Uri.parse(call.argument<String>("url") ?: ""))),
+            )
+            "calendarPermission" -> result.success(hasCalendarPermission())
+            "requestCalendarPermission" -> requestCalendarPermission(result)
+            "listCalendars" -> guardedCalendar(result) { listCalendars() }
+            "calendarEvents" -> guardedCalendar(result) {
+                calendarEvents(call.argument<Number>("begin")!!.toLong(), call.argument<Number>("end")!!.toLong())
+            }
+            "insertEvent" -> guardedCalendar(result) { insertEvent(call) }
+            "openEvent" -> result.success(
+                startSafely(
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        ContentUris.withAppendedId(
+                            CalendarContract.Events.CONTENT_URI,
+                            call.argument<Number>("id")!!.toLong(),
+                        ),
+                    ),
+                ),
+            )
             "saveDocument" -> saveDocument(call, result)
             "openDocument" -> openDocument(call, result)
             else -> result.notImplemented()
@@ -175,6 +205,129 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    // --- Agenda du téléphone (Google Agenda synchronisé par le compte Google) ---
+    // Lecture/écriture locales : aucune connexion Google dans l'app.
+
+    private fun hasCalendarPermission(): Boolean =
+        checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED &&
+            checkSelfPermission(Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED
+
+    private fun requestCalendarPermission(result: MethodChannel.Result) {
+        if (hasCalendarPermission()) {
+            result.success(true)
+            return
+        }
+        pendingPermission?.success(false)
+        pendingPermission = result
+        requestPermissions(
+            arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
+            REQUEST_CALENDAR,
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_CALENDAR) {
+            pendingPermission?.success(hasCalendarPermission())
+            pendingPermission = null
+        }
+    }
+
+    private fun guardedCalendar(result: MethodChannel.Result, block: () -> Any?) {
+        if (!hasCalendarPermission()) {
+            result.error("no_permission", "Accès à l'agenda refusé", null)
+            return
+        }
+        try {
+            result.success(block())
+        } catch (e: Exception) {
+            result.error("calendar", e.message, null)
+        }
+    }
+
+    private fun listCalendars(): List<Map<String, Any?>> {
+        val projection = arrayOf(
+            CalendarContract.Calendars._ID,
+            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+            CalendarContract.Calendars.ACCOUNT_NAME,
+            CalendarContract.Calendars.ACCOUNT_TYPE,
+            CalendarContract.Calendars.CALENDAR_COLOR,
+            CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
+            CalendarContract.Calendars.IS_PRIMARY,
+        )
+        val list = mutableListOf<Map<String, Any?>>()
+        contentResolver.query(CalendarContract.Calendars.CONTENT_URI, projection, null, null, null)?.use { c ->
+            while (c.moveToNext()) {
+                list += mapOf(
+                    "id" to c.getLong(0),
+                    "name" to c.getString(1),
+                    "account" to c.getString(2),
+                    "accountType" to c.getString(3),
+                    "color" to c.getInt(4),
+                    "writable" to (c.getInt(5) >= CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR),
+                    "primary" to (c.getInt(6) == 1),
+                )
+            }
+        }
+        return list
+    }
+
+    /** Occurrences (y compris récurrentes) entre deux instants, en millisecondes. */
+    private fun calendarEvents(begin: Long, end: Long): List<Map<String, Any?>> {
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
+            ContentUris.appendId(it, begin)
+            ContentUris.appendId(it, end)
+        }.build()
+        val projection = arrayOf(
+            CalendarContract.Instances.EVENT_ID,
+            CalendarContract.Instances.TITLE,
+            CalendarContract.Instances.BEGIN,
+            CalendarContract.Instances.END,
+            CalendarContract.Instances.ALL_DAY,
+            CalendarContract.Instances.EVENT_LOCATION,
+            CalendarContract.Instances.DISPLAY_COLOR,
+        )
+        val list = mutableListOf<Map<String, Any?>>()
+        contentResolver.query(
+            uri,
+            projection,
+            "${CalendarContract.Instances.VISIBLE} = 1",
+            null,
+            "${CalendarContract.Instances.BEGIN} ASC",
+        )?.use { c ->
+            while (c.moveToNext() && list.size < 60) {
+                list += mapOf(
+                    "id" to c.getLong(0),
+                    "title" to (c.getString(1) ?: ""),
+                    "begin" to c.getLong(2),
+                    "end" to c.getLong(3),
+                    "allDay" to (c.getInt(4) == 1),
+                    "location" to c.getString(5),
+                    "color" to c.getInt(6),
+                )
+            }
+        }
+        return list
+    }
+
+    private fun insertEvent(call: MethodCall): Long {
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.CALENDAR_ID, call.argument<Number>("calendarId")!!.toLong())
+            put(CalendarContract.Events.TITLE, call.argument<String>("title"))
+            put(CalendarContract.Events.DESCRIPTION, call.argument<String>("description"))
+            put(CalendarContract.Events.DTSTART, call.argument<Number>("begin")!!.toLong())
+            put(CalendarContract.Events.DTEND, call.argument<Number>("end")!!.toLong())
+            put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
+        }
+        val uri = contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
+            ?: throw IllegalStateException("Création refusée par l'agenda")
+        return ContentUris.parseId(uri)
+    }
+
     // --- Utilitaires ---
 
     private fun startSafely(intent: Intent): Boolean = try {
@@ -208,5 +361,6 @@ class MainActivity : FlutterActivity() {
         private const val CHANNEL = "coffre/system"
         private const val REQUEST_CREATE = 4201
         private const val REQUEST_OPEN = 4202
+        private const val REQUEST_CALENDAR = 4301
     }
 }

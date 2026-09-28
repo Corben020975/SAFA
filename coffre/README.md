@@ -1,6 +1,6 @@
 # Coffre
 
-App Android personnelle, privée et hors-ligne : idées, tâches, notes et rappels au même endroit.
+App Android personnelle, privée, hors-ligne par défaut : idées, tâches, notes et rappels au même endroit.
 Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrées sur le téléphone.
 
 - **Jour** : ce qui compte maintenant, aujourd'hui, cette semaine, plus une idée récente à ne pas perdre.
@@ -8,8 +8,12 @@ Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrée
 - **Barre de capture** toujours en bas : tu écris ou dictes, Coffre devine le type, la date, la priorité
   et le contexte (Travail, Santé, Admin…), tu relis l'aperçu, tu envoies. Le texte d'origine est gardé.
 - **Plus tard** sur chaque carte, **pré-alerte** 1 h 30 avant un rendez-vous, report 5/15/60 min depuis la notification.
+- **Rappel réglable** : date et heure modifiables séparément, heures « matin » et « soir » par défaut au choix (Réglages).
+- **Assistant IA** (Claude, optionnel) : synthétiser, développer, découper en tâches, reformuler, rédiger un message, brief du jour.
+- **Agenda Google** : rendez-vous du jour dans *Jour*, ajout d'un rappel à l'agenda (via l'agenda du téléphone, sans connexion Google).
+- **Notion** (optionnel) : envoyer un élément dans une base Notion.
 
-- **Aucun compte, aucun serveur, aucune statistique.** L'APK final n'a pas la permission Internet.
+- **Aucun compte, aucun serveur, aucune statistique.** Internet sert uniquement à l'IA et à Notion, quand tu le demandes.
 - **Base chiffrée** (SQLite3 Multiple Ciphers, ChaCha20). La clé est générée au premier lancement et reste dans le Keystore Android.
 - **Sauvegarde** : export JSON (restaurable) ou CSV (Excel), à l'endroit que tu choisis. ⚠️ Ces fichiers ne sont pas chiffrés.
 
@@ -139,6 +143,30 @@ L'assistant « Rappels fiables » s'ouvre au premier lancement. Il est aussi acc
 
 ---
 
+## Connecter l'IA, l'agenda et Notion
+
+Tout est optionnel et se règle dans *Réglages*. Les clés restent dans le Keystore du téléphone et ne sont jamais exportées.
+
+**Assistant IA (Claude)**
+1. Sur [console.anthropic.com](https://console.anthropic.com) : créer un compte, ajouter du crédit (paiement à l'usage), *API Keys › Create Key*.
+2. *Réglages › Assistant IA › Clé API Claude* : coller la clé, puis *Tester*.
+3. Dans un élément : bouton ✦ ou *Assistant IA*. Dans *Jour* : icône ✦ pour le brief du jour.
+
+Avant chaque envoi, Coffre masque les noms précédés d'une civilité (Mme, M., Dr…), n° de registre national, téléphones, e-mails et IBAN, puis les remet dans la réponse. Le masquage ne détecte pas tout : pas d'information sensible sur un bénéficiaire (secret professionnel).
+
+**Agenda Google**
+1. Le compte Google doit être synchronisé dans l'app *Agenda* du téléphone (Samsung Calendar ou Google Agenda).
+2. *Réglages › Agenda Google › Afficher mon agenda dans Jour* : activer, autoriser l'accès. L'agenda Google principal est choisi automatiquement (modifiable).
+3. *Jour* affiche les rendez-vous d'aujourd'hui et demain ; dans un élément avec rappel : *Ajouter à l'agenda*.
+
+**Notion**
+1. Sur [notion.so/my-integrations](https://www.notion.so/my-integrations) : *Nouvelle intégration* (interne), copier le jeton.
+2. Dans Notion, ouvrir la base cible › `•••` › *Connexions* › ajouter l'intégration.
+3. *Réglages › Notion › Jeton d'intégration* : coller le jeton, puis *Base de destination*.
+4. Dans un élément : *Envoyer vers Notion* (titre, date du rappel si la base a une colonne date, texte complet).
+
+---
+
 ## Si ça ne compile pas
 
 | Message | Cause | Correctif |
@@ -170,9 +198,11 @@ lib/
   core/                   services partagés, normalisation texte, formats de date
   data/                   Drift (tables, requêtes), chiffrement, réglages, sauvegarde
   services/               notifications (+ isolate snooze), dictée, analyse de saisie, dates, vue Jour, pont Android
+  services/ai/            client Claude (HTTP), assistant, masquage des données personnelles
+  services/notion_service.dart   API Notion (jeton d'intégration)
   ui/screens/             accueil (Jour + Flux), Capture, Détail, Réglages, Rappels fiables
-  ui/views/               vues Jour et Flux, bandeaux d'alerte
-  ui/widgets/             carte, ligne, barre de capture, sélecteurs, rappel, tags, micro
+  ui/views/               vues Jour et Flux, agenda du jour, bandeaux d'alerte
+  ui/widgets/             carte, ligne, barre de capture, sélecteurs, rappel, tags, micro, assistant IA
 android/app/src/main/     Manifest, MainActivity.kt, widget, icônes
-test/                     base de données + chiffrement, parseur de dates, parcours Inbox
+test/                     base + chiffrement, parseur de dates, parcours Inbox, IA, Notion, masquage
 ```

@@ -79,7 +79,7 @@ void main() {
   test('plus tard', () {
     final choices = laterChoices(DateTime(2026, 9, 28, 20));
     expect(choices[1].$1, 'Demain soir');
-    expect(choices[1].$2, DateTime(2026, 9, 29, 19));
+    expect(choices[1].$2, DateTime(2026, 9, 29, 18));
     expect(choices[2].$2, DateTime(2026, 9, 29, 9));
   });
 }

@@ -7,6 +7,7 @@ import '../../services/notification_service.dart';
 import '../screens/capture_screen.dart';
 import '../theme.dart';
 import 'dictation_button.dart';
+import 'reminder_field.dart';
 
 /// Barre de capture toujours visible en bas (vues Jour et Flux).
 /// Texte ou dictée → aperçu de l'analyse → envoi. Rien n'est enregistré
@@ -28,6 +29,13 @@ class _QuickComposerState extends State<QuickComposer> {
   Analysis? _preview;
   bool _saving = false;
 
+  /// Rappel choisi à la main (remplace celui détecté), ou retiré.
+  DateTime? _customAt;
+  bool _noReminder = false;
+
+  DateTime? get _reminder =>
+      _noReminder ? null : (_customAt ?? _preview?.remindAt);
+
   @override
   void initState() {
     super.initState();
@@ -42,9 +50,22 @@ class _QuickComposerState extends State<QuickComposer> {
 
   void _onChanged() {
     final text = widget.controller.text.trim();
-    setState(
-      () => _preview = text.isEmpty ? null : CaptureAnalyzer.analyze(text),
-    );
+    setState(() {
+      _preview = text.isEmpty ? null : CaptureAnalyzer.analyze(text);
+      if (text.isEmpty) {
+        _customAt = null;
+        _noReminder = false;
+      }
+    });
+  }
+
+  Future<void> _adjustReminder() async {
+    final chosen = await pickReminderDateTime(context, _reminder);
+    if (chosen == null || !mounted) return;
+    setState(() {
+      _customAt = chosen;
+      _noReminder = false;
+    });
   }
 
   void _onDictated(String dictated) {
@@ -66,11 +87,12 @@ class _QuickComposerState extends State<QuickComposer> {
     if (s.speech.isListening) await s.speech.stop();
 
     final a = CaptureAnalyzer.analyze(text);
+    final at = _noReminder ? null : (_customAt ?? a.remindAt);
     final item = await s.db.createItem(
       kind: a.kind,
       content: a.title,
       priority: a.priority,
-      remindAt: a.remindAt,
+      remindAt: at,
       context: a.context,
       raw: a.raw,
     );
@@ -90,7 +112,9 @@ class _QuickComposerState extends State<QuickComposer> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('Enregistré · ${_describe(a)}$suffix'),
+          content: Text(
+            'Enregistré · ${[_describe(a), if (at != null) formatReminder(at)].join(' · ')}$suffix',
+          ),
           persist: false,
           duration: kUndoDuration,
           action: SnackBarAction(
@@ -108,11 +132,7 @@ class _QuickComposerState extends State<QuickComposer> {
     if (saved != null) widget.controller.clear();
   }
 
-  static String _describe(Analysis a) => [
-    a.kind.label,
-    ?a.context,
-    if (a.remindAt != null) formatReminder(a.remindAt!),
-  ].join(' · ');
+  static String _describe(Analysis a) => [a.kind.label, ?a.context].join(' · ');
 
   @override
   Widget build(BuildContext context) {
@@ -217,7 +237,7 @@ class _QuickComposerState extends State<QuickComposer> {
             ),
             if (_preview != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 6, 16, 0),
+                padding: const EdgeInsets.fromLTRB(14, 4, 8, 0),
                 child: Row(
                   children: [
                     Icon(
@@ -236,6 +256,24 @@ class _QuickComposerState extends State<QuickComposer> {
                         ),
                       ),
                     ),
+                    // Rappel détecté : touche pour changer date/heure, × pour le retirer.
+                    if (_reminder != null)
+                      InputChip(
+                        visualDensity: VisualDensity.compact,
+                        avatar: Icon(Icons.alarm, size: 16, color: p.sage),
+                        label: Text(formatReminder(_reminder!)),
+                        tooltip: 'Changer la date ou l\'heure',
+                        onPressed: _adjustReminder,
+                        onDeleted: () => setState(() => _noReminder = true),
+                        deleteButtonTooltipMessage: 'Sans rappel',
+                      )
+                    else
+                      ActionChip(
+                        visualDensity: VisualDensity.compact,
+                        avatar: Icon(Icons.alarm_add, size: 16, color: p.sage),
+                        label: const Text('Rappel'),
+                        onPressed: _adjustReminder,
+                      ),
                   ],
                 ),
               ),

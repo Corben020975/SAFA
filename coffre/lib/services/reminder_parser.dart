@@ -1,3 +1,4 @@
+import '../core/reminder_defaults.dart';
 import '../core/text_normalize.dart';
 
 /// Rappel détecté dans un texte dicté ou tapé (« demain 9h », « dans 20 minutes »).
@@ -59,13 +60,14 @@ class ReminderParser {
     'quarante-cinq': 45,
   };
 
-  // Heures et minutes par défaut quand seule une partie de journée est dite.
-  static const _periods = {
-    'matin': (9, 0),
+  // Heures et minutes par défaut quand seule une partie de journée est dite
+  // (matin et soir suivent les réglages).
+  static Map<String, (int, int)> get _periods => {
+    'matin': ReminderDefaults.morning,
     'midi': (12, 0),
     'apres-midi': (14, 0),
     'apres midi': (14, 0),
-    'soir': (18, 0),
+    'soir': ReminderDefaults.evening,
   };
 
   static const _connector = r'(?:(?:pour|a|vers|des|avant|d ici|d.ici)\s+)?';
@@ -128,8 +130,12 @@ class ReminderParser {
       if (n == null || n == 0) return null;
       final unit = m.group(3)!;
       if (unit.startsWith('j')) {
-        // « dans 3 jours » : ce jour-là à 9 h.
-        final day = _addDays(DateTime(now.year, now.month, now.day, 9), n);
+        // « dans 3 jours » : ce jour-là à l'heure du matin.
+        final (hour, minute) = ReminderDefaults.morning;
+        final day = _addDays(
+          DateTime(now.year, now.month, now.day, hour, minute),
+          n,
+        );
         return ParsedReminder(day, m.start, m.end);
       }
       delay = unit.startsWith('h') ? Duration(hours: n) : Duration(minutes: n);
@@ -184,7 +190,7 @@ class ReminderParser {
         end += after.end;
       }
     }
-    time ??= (9, 0);
+    time ??= ReminderDefaults.morning;
     final when = DateTime(day.year, day.month, day.day, time.$1, time.$2);
     if (!when.isAfter(now)) return null;
     return ParsedReminder(when, m.start, end);

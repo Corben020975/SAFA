@@ -53,6 +53,12 @@ class Items extends Table {
   /// Notification supplémentaire 1 h 30 avant le rappel.
   BoolColumn get preAlert => boolean().withDefault(const Constant(false))();
 
+  /// Événement créé dans l'agenda du téléphone (Google Agenda synchronisé).
+  IntColumn get calendarEventId => integer().nullable()();
+
+  /// Page Notion créée depuis cet élément.
+  TextColumn get notionUrl => text().nullable()();
+
   /// Contenu + tags normalisés (voir text_normalize.dart), pour la recherche.
   TextColumn get searchText => text().withDefault(const Constant(''))();
   DateTimeColumn get createdAt => dateTime()();
@@ -75,7 +81,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -86,6 +92,10 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(items, items.raw);
         await m.addColumn(items, items.context);
         await m.addColumn(items, items.preAlert);
+      }
+      if (from < 3) {
+        await m.addColumn(items, items.calendarEventId);
+        await m.addColumn(items, items.notionUrl);
       }
     },
   );

@@ -8,7 +8,9 @@ import '../../core/date_labels.dart';
 import '../../data/database.dart';
 import '../../data/enums.dart';
 import '../../services/notification_service.dart';
+import '../../services/notion_service.dart';
 import '../theme.dart';
+import '../widgets/ai_sheet.dart';
 import '../widgets/dictation_button.dart';
 import '../widgets/reminder_field.dart';
 import '../widgets/selectors.dart';
@@ -166,9 +168,132 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  void _snack(String text) => ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(text)));
+  // --- Assistant IA : applique la réponse au texte ---
+
+  void _replaceText(String text) {
+    _text.text = text;
+    _onTextChanged(text);
+  }
+
+  void _appendText(String text) {
+    final current = _text.text.trimRight();
+    _replaceText(current.isEmpty ? text : '$current\n\n$text');
+  }
+
+  Future<void> _openAi() async {
+    // Enregistre la frappe en cours avant l'envoi.
+    if (_debounce?.isActive ?? false) {
+      _debounce!.cancel();
+      _saveText();
+    }
+    final item = _item;
+    if (item == null) return;
+    await showAiSheet(
+      context,
+      item.copyWith(
+        content: _text.text.trim().isEmpty ? item.content : _text.text.trim(),
+      ),
+      onReplace: _replaceText,
+      onAppend: _appendText,
+    );
+  }
+
+  // --- Agenda du téléphone ---
+
+  Future<void> _addToCalendar() async {
+    final item = _item!;
+    final settings = _s.settings;
+    final calendarId = settings.agendaCalendarId;
+    if (!settings.agendaEnabled || calendarId == null) {
+      return _askSettings(
+        'Choisis d\'abord ton agenda Google dans Réglages › Agenda.',
+      );
+    }
+    if (!await _s.system.requestCalendarPermission()) {
+      return _snack('Accès à l\'agenda refusé.');
+    }
+    final lines = item.content.trim().split('\n');
+    final begin = item.remindAt!;
+    try {
+      final id = await _s.system.insertEvent(
+        calendarId: calendarId,
+        title: lines.first,
+        description: [
+          lines.skip(1).join('\n').trim(),
+          'Créé depuis Coffre',
+        ].where((t) => t.isNotEmpty).join('\n\n'),
+        begin: begin,
+        end: begin.add(const Duration(minutes: 30)),
+      );
+      if (id == null) return _snack('L\'agenda a refusé la création.');
+      await _save(_item!.copyWith(calendarEventId: Value(id)));
+      _snack('Ajouté à ${settings.agendaCalendarName ?? 'l\'agenda'}');
+    } catch (e) {
+      _snack('Agenda : $e');
+    }
+  }
+
+  // --- Notion ---
+
+  Future<void> _sendToNotion() async {
+    final target = NotionTarget.fromMap(_s.settings.notionTarget);
+    if (target == null || !await _s.notion.configured) {
+      return _askSettings(
+        'Connecte Notion et choisis une base dans Réglages › Notion.',
+      );
+    }
+    _snack('Envoi vers Notion…');
+    try {
+      final url = await _s.notion.createPage(
+        target,
+        _item!.copyWith(content: _text.text.trim()),
+      );
+      await _save(_item!.copyWith(notionUrl: Value(url)));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Envoyé dans « ${target.name} »'),
+            persist: false,
+            duration: kUndoDuration,
+            action: SnackBarAction(
+              label: 'Ouvrir',
+              onPressed: () => _s.system.openUrl(url),
+            ),
+          ),
+        );
+    } catch (e) {
+      _snack('$e');
+    }
+  }
+
+  Future<void> _askSettings(String message) async {
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(d, false),
+            child: const Text('Plus tard'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(d, true),
+            child: const Text('Réglages'),
+          ),
+        ],
+      ),
+    );
+    if (go == true && mounted) Navigator.of(context).pushNamed('/settings');
+  }
+
+  void _snack(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +314,11 @@ class _DetailScreenState extends State<DetailScreen> {
       appBar: AppBar(
         title: Text(item.kind.label),
         actions: [
+          IconButton(
+            tooltip: 'Assistant IA',
+            icon: const Icon(Icons.auto_awesome_outlined),
+            onPressed: _openAi,
+          ),
           IconButton(
             tooltip: 'Supprimer',
             icon: const Icon(Icons.delete_outline),
@@ -289,6 +419,46 @@ class _DetailScreenState extends State<DetailScreen> {
           TagsEditor(
             tags: item.tags,
             onChanged: (t) => _save(item.copyWith(tags: t)),
+          ),
+          const SectionLabel('Aller plus loin'),
+          FilledButton.tonalIcon(
+            onPressed: _openAi,
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('Assistant IA : synthétiser, développer…'),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (item.remindAt != null)
+                item.calendarEventId == null
+                    ? OutlinedButton.icon(
+                        onPressed: _addToCalendar,
+                        icon: const Icon(
+                          Icons.event_available_outlined,
+                          size: 18,
+                        ),
+                        label: const Text('Ajouter à l\'agenda'),
+                      )
+                    : OutlinedButton.icon(
+                        onPressed: () =>
+                            _s.system.openEvent(item.calendarEventId!),
+                        icon: const Icon(Icons.event, size: 18),
+                        label: const Text('Ouvrir dans l\'agenda'),
+                      ),
+              item.notionUrl == null
+                  ? OutlinedButton.icon(
+                      onPressed: _sendToNotion,
+                      icon: const Icon(Icons.north_east, size: 18),
+                      label: const Text('Envoyer vers Notion'),
+                    )
+                  : OutlinedButton.icon(
+                      onPressed: () => _s.system.openUrl(item.notionUrl!),
+                      icon: const Icon(Icons.open_in_new, size: 18),
+                      label: const Text('Ouvrir dans Notion'),
+                    ),
+            ],
           ),
           const SectionLabel('Organisation'),
           Card(

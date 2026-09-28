@@ -17,8 +17,11 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Dictée. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- Pas de permission INTERNET : retirée explicitement en release
-         (voir src/release/AndroidManifest.xml). -->
+    <!-- Internet : uniquement pour l'assistant IA et Notion, sur demande. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Agenda du téléphone (Google Agenda synchronisé) : lire le jour, ajouter un rappel. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 
     <application
         android:name="${applicationName}"

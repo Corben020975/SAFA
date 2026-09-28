@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_services.dart';
 import '../../core/date_labels.dart';
 import '../../services/notification_service.dart';
+import 'connections_settings.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -100,6 +101,13 @@ class SettingsScreen extends StatelessWidget {
               subtitle: const Text('Réglages Android du canal « Rappels »'),
               onTap: s.system.openNotificationSettings,
             ),
+            const DefaultTimesTiles(),
+            const _Header('Assistant IA (Claude)'),
+            const AiSettingsSection(),
+            const _Header('Agenda Google'),
+            const AgendaSettingsSection(),
+            const _Header('Notion'),
+            const NotionSettingsSection(),
             const _Header('Sauvegarde'),
             ListTile(
               leading: const Icon(Icons.save_alt),
@@ -140,11 +148,11 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             const ListTile(
-              leading: Icon(Icons.wifi_off),
-              title: Text('Aucun accès Internet'),
+              leading: Icon(Icons.wifi_tethering_off),
+              title: Text('Internet seulement à ta demande'),
               subtitle: Text(
-                'L\'application ne possède pas la permission Internet : '
-                'elle ne peut rien envoyer. Aucun compte, aucune statistique.',
+                'Utilisé uniquement quand tu lances l\'assistant IA (Anthropic) '
+                'ou un envoi / une recherche Notion. Aucun compte Coffre, aucune statistique.',
               ),
             ),
             FutureBuilder<String>(

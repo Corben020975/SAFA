@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
+import '../core/reminder_defaults.dart';
 import 'database.dart';
 import 'enums.dart';
 
@@ -17,6 +20,22 @@ class AppSettings extends ChangeNotifier {
   ItemKind lastKind = ItemKind.task;
   DateTime? lastExportAt;
 
+  /// Heures par défaut (minutes depuis minuit).
+  int morningMinutes = 9 * 60;
+  int eveningMinutes = 18 * 60;
+
+  /// Assistant IA : données personnelles masquées avant envoi (par défaut).
+  bool aiMask = true;
+  bool aiConsent = false;
+
+  /// Agenda du téléphone (Google Agenda synchronisé).
+  bool agendaEnabled = false;
+  int? agendaCalendarId;
+  String? agendaCalendarName;
+
+  /// Base Notion de destination : {id, name, titleProp, dateProp}.
+  Map<String, String>? notionTarget;
+
   Future<void> load() async {
     final p = await _db.allPrefs();
     themeMode = ThemeMode.values.asNameMap()[p['theme']] ?? ThemeMode.dark;
@@ -27,7 +46,62 @@ class AppSettings extends ChangeNotifier {
     onboardingDone = p['onboardingDone'] == 'true';
     lastKind = ItemKind.values.asNameMap()[p['lastKind']] ?? ItemKind.task;
     lastExportAt = DateTime.tryParse(p['lastExportAt'] ?? '');
+    morningMinutes = int.tryParse(p['morning'] ?? '') ?? 9 * 60;
+    eveningMinutes = int.tryParse(p['evening'] ?? '') ?? 18 * 60;
+    aiMask = p['aiMask'] != 'false';
+    aiConsent = p['aiConsent'] == 'true';
+    agendaEnabled = p['agendaEnabled'] == 'true';
+    agendaCalendarId = int.tryParse(p['agendaCalendarId'] ?? '');
+    agendaCalendarName = p['agendaCalendarName'];
+    try {
+      final raw = p['notionTarget'];
+      notionTarget = raw == null
+          ? null
+          : Map<String, String>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      notionTarget = null;
+    }
+    _applyDefaults();
   }
+
+  void _applyDefaults() {
+    ReminderDefaults.morning = (morningMinutes ~/ 60, morningMinutes % 60);
+    ReminderDefaults.evening = (eveningMinutes ~/ 60, eveningMinutes % 60);
+  }
+
+  Future<void> setMorning(int minutes) => _set(
+    () {
+      morningMinutes = minutes;
+      _applyDefaults();
+    },
+    'morning',
+    '$minutes',
+  );
+  Future<void> setEvening(int minutes) => _set(
+    () {
+      eveningMinutes = minutes;
+      _applyDefaults();
+    },
+    'evening',
+    '$minutes',
+  );
+  Future<void> setAiMask(bool value) =>
+      _set(() => aiMask = value, 'aiMask', '$value');
+  Future<void> setAiConsent(bool value) =>
+      _set(() => aiConsent = value, 'aiConsent', '$value');
+  Future<void> setAgendaEnabled(bool value) =>
+      _set(() => agendaEnabled = value, 'agendaEnabled', '$value');
+  Future<void> setAgendaCalendar(int id, String name) async {
+    agendaCalendarName = name;
+    await _db.setPref('agendaCalendarName', name);
+    await _set(() => agendaCalendarId = id, 'agendaCalendarId', '$id');
+  }
+
+  Future<void> setNotionTarget(Map<String, String>? target) => _set(
+    () => notionTarget = target,
+    'notionTarget',
+    target == null ? '' : jsonEncode(target),
+  );
 
   Future<void> setThemeMode(ThemeMode value) =>
       _set(() => themeMode = value, 'theme', value.name);

@@ -8,6 +8,8 @@ import '../../data/database.dart';
 import '../../services/day_board.dart';
 import '../theme.dart';
 import '../widgets/item_card.dart';
+import '../widgets/ai_sheet.dart';
+import 'agenda_section.dart';
 import 'banners.dart';
 
 /// Accueil : ce qui compte maintenant, aujourd'hui, cette semaine.
@@ -77,6 +79,15 @@ class _JourViewState extends State<JourView> {
                             style: displayStyle(context, 18, color: p.muted),
                           ),
                           const Spacer(),
+                          if (!board.isEmpty)
+                            IconButton(
+                              tooltip: 'Brief du jour par l\'IA',
+                              onPressed: () => showDayBriefSheet(
+                                context,
+                                snapshot.data ?? const [],
+                              ),
+                              icon: const Icon(Icons.auto_awesome_outlined),
+                            ),
                           IconButton(
                             tooltip: 'Réglages',
                             onPressed: () =>
@@ -114,6 +125,14 @@ class _JourViewState extends State<JourView> {
               ),
             ),
             const SliverToBoxAdapter(child: ReminderHealthBanner()),
+            SliverToBoxAdapter(
+              child: ListenableBuilder(
+                listenable: _s.settings,
+                builder: (context, _) => _s.settings.agendaEnabled
+                    ? const AgendaSection()
+                    : const SizedBox.shrink(),
+              ),
+            ),
             const SliverToBoxAdapter(child: SetAsideBanner()),
             if (board.isEmpty)
               SliverToBoxAdapter(child: _empty(context))

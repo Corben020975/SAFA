@@ -59,9 +59,9 @@ jobs:
           TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           echo "== Permissions"
           "$TOOLS/aapt2" dump permissions "$APK" | tee perms.txt
-          if grep -q "android.permission.INTERNET" perms.txt; then
-            echo "ERREUR : la permission INTERNET est présente"; exit 1
-          fi
+          for perm in INTERNET READ_CALENDAR WRITE_CALENDAR USE_EXACT_ALARM; do
+            grep -q "android.permission.$perm" perms.txt || { echo "ERREUR : permission $perm absente"; exit 1; }
+          done
           echo "== Bibliothèques natives"
           unzip -l "$APK" | grep "\.so$" | tee libs.txt
           grep -qi "sqlite" libs.txt || { echo "ERREUR : bibliothèque SQLite absente"; exit 1; }

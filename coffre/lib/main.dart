@@ -11,8 +11,12 @@ import 'core/app_services.dart';
 import 'data/app_settings.dart';
 import 'data/backup_service.dart';
 import 'data/db_opener.dart';
+import 'services/ai/ai_assistant.dart';
+import 'services/ai/claude_client.dart';
 import 'services/launch_router.dart';
 import 'services/notification_service.dart';
+import 'services/notion_service.dart';
+import 'services/secret_store.dart';
 import 'services/speech_service.dart';
 import 'services/system_channel.dart';
 
@@ -41,6 +45,7 @@ Future<void> main() async {
       onForegroundResponse: router.onNotificationResponse,
     );
 
+    final secrets = SecretStore();
     final services = AppServices(
       db: db,
       settings: settings,
@@ -48,6 +53,12 @@ Future<void> main() async {
       speech: SpeechService(),
       system: system,
       backup: BackupService(db, system, notifications),
+      secrets: secrets,
+      ai: AiAssistant(
+        ClaudeClient(() => secrets.read(SecretStore.aiKey)),
+        settings,
+      ),
+      notion: NotionService(() => secrets.read(SecretStore.notionKey)),
       encryptionActive: await isEncryptionAvailable(db),
       setAsideDbFile: opened.setAsideFile,
     );

@@ -1,9 +1,0 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-    <!-- Garantie de confidentialité : même si une dépendance la déclare,
-         la permission Internet est supprimée de l'APK final.
-         (Les versions debug la gardent pour le rechargement à chaud.) -->
-    <uses-permission
-        android:name="android.permission.INTERNET"
-        tools:node="remove" />
-</manifest>

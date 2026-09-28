@@ -1,4 +1,5 @@
 import '../core/date_labels.dart';
+import '../core/reminder_defaults.dart';
 import '../data/database.dart';
 import '../data/enums.dart';
 
@@ -136,12 +137,18 @@ class DayBoard {
 
 /// Choix de « Plus tard » (repris de Sillage), calculés à l'instant.
 List<(String, DateTime)> laterChoices(DateTime now) {
-  final evening = now.hour < 18
-      ? DateTime(now.year, now.month, now.day, 19)
-      : DateTime(now.year, now.month, now.day + 1, 19);
+  final (eh, em) = ReminderDefaults.evening;
+  final (mh, mm) = ReminderDefaults.morning;
+  final tonight = DateTime(now.year, now.month, now.day, eh, em);
+  final beforeEvening = now.isBefore(tonight);
   return [
     ('Dans 2 h', now.add(const Duration(hours: 2))),
-    (now.hour < 18 ? 'Ce soir' : 'Demain soir', evening),
-    ('Demain matin', DateTime(now.year, now.month, now.day + 1, 9)),
+    (
+      beforeEvening ? 'Ce soir' : 'Demain soir',
+      beforeEvening
+          ? tonight
+          : DateTime(now.year, now.month, now.day + 1, eh, em),
+    ),
+    ('Demain matin', DateTime(now.year, now.month, now.day + 1, mh, mm)),
   ];
 }

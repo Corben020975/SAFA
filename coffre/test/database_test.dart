@@ -97,7 +97,7 @@ void main() {
   });
 
   test(
-    'migration v1 → v2 : données conservées, nouvelles colonnes prêtes',
+    'migration v1 → v3 : données conservées, nouvelles colonnes prêtes',
     () async {
       final migrated = AppDatabase(
         NativeDatabase.memory(
@@ -120,12 +120,21 @@ void main() {
       expect(item.raw, isNull);
       expect(item.context, isNull);
       expect(item.preAlert, isFalse);
+      expect(item.calendarEventId, isNull);
+      expect(item.notionUrl, isNull);
       expect((await migrated.allPrefs())['theme'], 'dark');
 
       final saved = await migrated.saveItem(
-        item.copyWith(context: const Value('Santé'), preAlert: true),
+        item.copyWith(
+          context: const Value('Santé'),
+          preAlert: true,
+          calendarEventId: const Value(42),
+          notionUrl: const Value('https://www.notion.so/x'),
+        ),
       );
       expect(saved.preAlert, isTrue);
+      expect(saved.calendarEventId, 42);
+      expect(saved.notionUrl, 'https://www.notion.so/x');
       await migrated.close();
     },
   );
