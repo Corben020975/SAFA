@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fond sombre au démarrage : pas de flash blanc avant le thème sombre de l'app. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/coffre_background" />
+</layer-list>

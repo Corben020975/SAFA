@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- L'icône de notification est chargée par son nom (texte) : sans cette règle,
+     R8 la supprime en release et les rappels échouent silencieusement. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_coffre,@drawable/ic_widget_*,@drawable/widget_*,@layout/widget_capture" />

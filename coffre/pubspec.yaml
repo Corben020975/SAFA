@@ -1,0 +1,49 @@
+name: coffre
+description: "Coffre – capture privée hors-ligne (idées, tâches, notes, rappels)."
+publish_to: 'none'
+
+# versionName+versionCode : incrémenter le +N à chaque APK installé par-dessus.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Stockage local
+  drift: ^2.35.0
+  drift_flutter: ^0.3.1
+  sqlite3: ^3.6.0
+  path_provider: ^2.1.6
+  path: ^1.9.1
+  flutter_secure_storage: ^11.2.0
+
+  # Rappels
+  flutter_local_notifications: ^22.3.1
+  timezone: ^0.11.1
+
+  # Dictée
+  speech_to_text: ^7.5.0
+
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.35.0
+  build_runner: ^2.16.1
+
+flutter:
+  uses-material-design: true
+
+# Chiffrement de la base : le paquet sqlite3 embarque SQLite3 Multiple Ciphers
+# (ChaCha20) au lieu de SQLite standard. Aucune autre configuration native.
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc

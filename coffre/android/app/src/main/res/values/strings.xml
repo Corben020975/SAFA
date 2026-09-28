@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Nom affiché sous l'icône : le changer ici (et dans lib/app.dart, title). -->
+    <string name="app_name">Coffre</string>
+    <string name="widget_label">Coffre – Ajouter</string>
+    <string name="widget_description">Ajouter une idée ou une tâche, au clavier ou à la voix.</string>
+    <string name="widget_idea">Idée</string>
+    <string name="widget_task">Tâche</string>
+    <string name="widget_voice">Dicter</string>
+</resources>

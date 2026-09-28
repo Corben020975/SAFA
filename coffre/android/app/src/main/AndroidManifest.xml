@@ -1,0 +1,104 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Rappels : afficher les notifications (Android 13+, demandé à l'écran d'accueil). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Rappels à la minute près malgré Doze.
+         Android 12 : SCHEDULE_EXACT_ALARM. Android 13+ : USE_EXACT_ALARM, accordée à
+         l'installation (usage « rappel » légitime, app hors Play Store). -->
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- Reprogrammer les rappels après un redémarrage du téléphone. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Afficher la boîte « autoriser en arrière-plan sans restriction » (Samsung). -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Dictée. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Pas de permission INTERNET : retirée explicitement en release
+         (voir src/release/AndroidManifest.xml). -->
+
+    <application
+        android:name="${applicationName}"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        tools:targetApi="31">
+
+        <!-- Pas de taskAffinity="" (modèle Flutter) : sinon chaque tap sur le
+             widget ouvrirait une deuxième copie de l'app dans les récents. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <!-- Les liens coffre:// du widget sont traités par MainActivity,
+                 pas poussés tels quels dans le routeur Flutter. -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- flutter_local_notifications : affichage programmé, boutons
+             « 5 min / 15 min / 1 h », reprogrammation au démarrage du téléphone. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Widget d'accueil « + Idée / + Tâche / Dicter ». -->
+        <receiver
+            android:name=".CaptureWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/capture_widget_info" />
+        </receiver>
+
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+
+    <queries>
+        <!-- Android 11+ : sans cette déclaration, le moteur de dictée est
+             invisible pour l'app (« reconnaissance vocale indisponible »). -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
+</manifest>
