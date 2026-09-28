@@ -68,6 +68,8 @@ class _CaptureScreenState extends State<CaptureScreen> {
   }
 
   void _onDictated(String dictated) {
+    // Le moteur peut livrer le résultat final après la fermeture de l'écran.
+    if (!mounted) return;
     final updated = appendDictation(_text.text, dictated);
     _text.value = TextEditingValue(
       text: updated,

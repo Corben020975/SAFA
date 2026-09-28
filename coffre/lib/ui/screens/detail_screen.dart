@@ -29,11 +29,14 @@ class _DetailScreenState extends State<DetailScreen> {
   Item? _item;
   bool _loading = true;
   Timer? _debounce;
+  bool _started = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_loading) _load();
+    if (_started) return;
+    _started = true;
+    _load();
   }
 
   Future<void> _load() async {
@@ -95,6 +98,7 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   void _onDictated(String dictated) {
+    if (!mounted) return;
     final updated = appendDictation(_text.text, dictated);
     _text.value = TextEditingValue(
       text: updated,
