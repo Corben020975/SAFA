@@ -49,7 +49,6 @@ class CaptureAnalyzer {
 
   // Contextes, dans l'ordre de priorité. Mots repliés (sans accents).
   static final _contexts = <(String, RegExp)>[
-    ('Hockey', RegExp(r'\b(hockey|red lions|entrainement|match)\b')),
     (
       'Santé',
       RegExp(

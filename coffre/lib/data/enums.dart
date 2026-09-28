@@ -32,14 +32,7 @@ enum ItemPriority {
 }
 
 /// Contextes proposés (détectés automatiquement à la saisie, modifiables).
-const kContexts = [
-  'Travail',
-  'Santé',
-  'Admin',
-  'Perso',
-  'Déplacement',
-  'Hockey',
-];
+const kContexts = ['Travail', 'Santé', 'Admin', 'Perso', 'Déplacement'];
 
 enum InboxFilter {
   inbox('Inbox'),

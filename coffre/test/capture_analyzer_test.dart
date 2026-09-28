@@ -56,8 +56,7 @@ void main() {
     expect(a.remindAt, DateTime(2026, 10, 2, 9));
   });
 
-  test('hockey et déplacement', () {
-    expect(read('Entraînement hockey jeudi 20h').context, 'Hockey');
+  test('déplacement', () {
     expect(read('Train pour Bruxelles à 8h').context, 'Déplacement');
   });
 }
