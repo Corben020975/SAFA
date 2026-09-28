@@ -138,6 +138,38 @@ class PreAlertSwitch extends StatelessWidget {
   }
 }
 
+/// « Répéter » : visible dès qu'un rappel est posé.
+class RecurrenceField extends StatelessWidget {
+  const RecurrenceField({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+  final Recurrence value;
+  final ValueChanged<Recurrence> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      leading: const Icon(Icons.repeat),
+      title: const Text('Répéter'),
+      trailing: DropdownButton<Recurrence>(
+        value: value,
+        underline: const SizedBox.shrink(),
+        borderRadius: BorderRadius.circular(16),
+        onChanged: (r) {
+          if (r != null) onChanged(r);
+        },
+        items: [
+          for (final r in Recurrence.values)
+            DropdownMenuItem(value: r, child: Text(r.label)),
+        ],
+      ),
+    );
+  }
+}
+
 /// Petit titre de section, lisible et discret.
 class SectionLabel extends StatelessWidget {
   const SectionLabel(this.text, {super.key});

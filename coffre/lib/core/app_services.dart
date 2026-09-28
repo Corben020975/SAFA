@@ -4,6 +4,7 @@ import '../data/app_settings.dart';
 import '../data/backup_service.dart';
 import '../data/database.dart';
 import '../services/ai/ai_assistant.dart';
+import '../services/app_lock.dart';
 import '../services/notification_service.dart';
 import '../services/notion_service.dart';
 import '../services/secret_store.dart';
@@ -25,7 +26,8 @@ class AppServices {
     required this.notion,
     required this.encryptionActive,
     this.setAsideDbFile,
-  });
+    AppLock? lock,
+  }) : lock = lock ?? AppLock(settings);
 
   final AppDatabase db;
   final AppSettings settings;
@@ -37,6 +39,7 @@ class AppServices {
   final AiAssistant ai;
   final NotionService notion;
   final bool encryptionActive;
+  final AppLock lock;
   final String? setAsideDbFile;
 }
 

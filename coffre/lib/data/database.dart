@@ -59,6 +59,10 @@ class Items extends Table {
   /// Page Notion créée depuis cet élément.
   TextColumn get notionUrl => text().nullable()();
 
+  /// Répétition du rappel (v4).
+  TextColumn get recurrence =>
+      textEnum<Recurrence>().withDefault(Constant(Recurrence.none.name))();
+
   /// Contenu + tags normalisés (voir text_normalize.dart), pour la recherche.
   TextColumn get searchText => text().withDefault(const Constant(''))();
   DateTimeColumn get createdAt => dateTime()();
@@ -81,7 +85,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -96,6 +100,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 3) {
         await m.addColumn(items, items.calendarEventId);
         await m.addColumn(items, items.notionUrl);
+      }
+      if (from < 4) {
+        await m.addColumn(items, items.recurrence);
       }
     },
   );
@@ -191,6 +198,7 @@ class AppDatabase extends _$AppDatabase {
     ItemStatus status = ItemStatus.todo,
     bool inbox = true,
     String? notionUrl,
+    Recurrence recurrence = Recurrence.none,
   }) async {
     final now = DateTime.now();
     final id = await into(items).insert(
@@ -200,6 +208,7 @@ class AppDatabase extends _$AppDatabase {
         status: Value(status),
         inbox: Value(inbox),
         notionUrl: Value(notionUrl),
+        recurrence: Value(recurrence),
         priority: Value(priority),
         tags: Value(tags),
         remindAt: Value(remindAt),
@@ -218,6 +227,16 @@ class AppDatabase extends _$AppDatabase {
   /// recherche, la date de modification et la date « fait ».
   Future<Item> saveItem(Item item) async {
     final now = DateTime.now();
+    final at = item.remindAt;
+    if (item.status == ItemStatus.done &&
+        item.recurrence != Recurrence.none &&
+        at != null) {
+      // Élément répété : « Fait » le renvoie à sa prochaine date.
+      item = item.copyWith(
+        status: ItemStatus.todo,
+        remindAt: Value(item.recurrence.next(at, now)),
+      );
+    }
     final saved = item.copyWith(
       content: item.content.trim(),
       searchText: buildSearchText(item.content, [...item.tags, ?item.context]),
@@ -263,8 +282,6 @@ class AppDatabase extends _$AppDatabase {
   Future<void> restoreItem(Item item) =>
       into(items).insert(item, mode: InsertMode.insertOrReplace);
 
-  /// Import d'une sauvegarde : ignore les doublons (même date de création
-  /// et même contenu). Retourne les éléments réellement ajoutés.
   /// Liens Notion déjà connus (envoyés ou importés) : pas de doublon.
   Future<Set<String>> notionUrls() async {
     final query = selectOnly(items)
@@ -273,6 +290,8 @@ class AppDatabase extends _$AppDatabase {
     return {for (final row in await query.get()) row.read(items.notionUrl)!};
   }
 
+  /// Import d'une sauvegarde : ignore les doublons (même date de création
+  /// et même contenu). Retourne les éléments réellement ajoutés.
   Future<List<Item>> importItems(List<ItemsCompanion> incoming) {
     return transaction(() async {
       final added = <Item>[];

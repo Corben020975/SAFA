@@ -9,6 +9,9 @@ Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrée
   et le contexte (Travail, Santé, Admin…), tu relis l'aperçu, tu envoies. Le texte d'origine est gardé.
 - **Plus tard** sur chaque carte, **pré-alerte** 1 h 30 avant un rendez-vous, report 5/15/60 min depuis la notification.
 - **Rappel réglable** : date et heure modifiables séparément, heures « matin » et « soir » par défaut au choix (Réglages).
+- **Rappels répétés** : chaque jour, en semaine, chaque semaine, toutes les 2 semaines, chaque mois, tous les 3 mois, chaque année. Se dicte (« réunion d'équipe chaque lundi à 9h », « tous les soirs »). « Fait » renvoie l'élément à sa prochaine date.
+- **Partager › Coffre** depuis Gmail, WhatsApp, Notes… : le texte arrive dans l'écran de capture.
+- **Verrouillage par empreinte** (ou code du téléphone), à l'ouverture et après 1 minute en arrière-plan (*Réglages › Confidentialité*).
 - **Assistant IA** : synthétiser, développer, découper en tâches, reformuler, rédiger un message, brief du jour.
   Au choix : **Gemini** (Google, clé gratuite) ou **Claude** (Anthropic, payant à l'usage).
 - **Agenda Google** : rendez-vous du jour dans *Jour*, ajout d'un rappel à l'agenda (via l'agenda du téléphone, sans connexion Google).

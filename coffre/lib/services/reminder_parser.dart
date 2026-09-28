@@ -1,5 +1,6 @@
 import '../core/reminder_defaults.dart';
 import '../core/text_normalize.dart';
+import '../data/enums.dart';
 
 /// Rappel détecté dans un texte dicté ou tapé (« demain 9h », « dans 20 minutes »).
 class ParsedReminder {
@@ -97,6 +98,69 @@ class ReminderParser {
   static final _timeAlone = RegExp(
     '(?<![a-z])(?:a|vers|pour|des)\\s+(?:$_time)',
   );
+
+  static final _recurring = RegExp(
+    r'\b(?:(?:tous|toutes)\s+les|chaque)\s+'
+    r'(15\s+jours|quinze\s+jours|jours?|matins?|soirs?|(?:2|deux)\s+semaines|'
+    r'semaines?|(?:3|trois)\s+mois|trimestres?|mois|annees?|ans?|'
+    r'(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)s?)\b'
+    r'|\b(en semaine|jours ouvrables|du lundi au vendredi)\b',
+  );
+
+  /// « chaque lundi », « tous les jours », « en semaine »… Renvoie la
+  /// répétition et le texte où l'expression est retirée (ou réduite au jour
+  /// nommé, pour que [parse] trouve la date).
+  static ({Recurrence recurrence, String text, (int, int)? time})?
+  extractRecurrence(String text) {
+    final m = _recurring.firstMatch(foldKeepingLength(text));
+    if (m == null) return null;
+    final unit = m.group(1) ?? '';
+    final weekday = m.group(2);
+    (int, int)? time;
+    final Recurrence recurrence;
+    if (m.group(3) != null) {
+      recurrence = Recurrence.weekdays;
+    } else if (weekday != null) {
+      recurrence = Recurrence.weekly;
+    } else if (unit.startsWith('15') || unit.startsWith('quinze')) {
+      recurrence = Recurrence.biweekly;
+    } else if (unit.startsWith('jour')) {
+      recurrence = Recurrence.daily;
+    } else if (unit.startsWith('matin')) {
+      recurrence = Recurrence.daily;
+      time = ReminderDefaults.morning;
+    } else if (unit.startsWith('soir')) {
+      recurrence = Recurrence.daily;
+      time = ReminderDefaults.evening;
+    } else if (unit.startsWith('2') || unit.startsWith('deux')) {
+      recurrence = Recurrence.biweekly;
+    } else if (unit.startsWith('semaine')) {
+      recurrence = Recurrence.weekly;
+    } else if (unit.startsWith('3') ||
+        unit.startsWith('trois') ||
+        unit.startsWith('trimestre')) {
+      recurrence = Recurrence.quarterly;
+    } else if (unit == 'mois') {
+      recurrence = Recurrence.monthly;
+    } else {
+      recurrence = Recurrence.yearly;
+    }
+    final rest =
+        '${text.substring(0, m.start)} ${weekday ?? ''} ${text.substring(m.end)}';
+    return (recurrence: recurrence, text: rest, time: time);
+  }
+
+  /// Première échéance d'une répétition sans date dite : aujourd'hui à
+  /// l'heure prévue si elle n'est pas passée, sinon demain (lundi si « en
+  /// semaine » tombe un week-end).
+  static DateTime firstAt((int, int) time, DateTime now, Recurrence r) {
+    var at = DateTime(now.year, now.month, now.day, time.$1, time.$2);
+    if (!at.isAfter(now)) at = _addDays(at, 1);
+    while (r == Recurrence.weekdays && at.weekday > DateTime.friday) {
+      at = _addDays(at, 1);
+    }
+    return at;
+  }
 
   static ParsedReminder? parse(String text, {DateTime? now}) {
     now ??= DateTime.now();

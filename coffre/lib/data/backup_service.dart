@@ -51,7 +51,7 @@ class BackupService {
     // dans Excel configuré en français (Belgique).
     final buffer = StringBuffer('﻿')
       ..writeln(
-        'id;type;statut;priorite;contexte;contenu;texte_origine;tags;rappel;pre_alerte;inbox;cree_le;modifie_le;fait_le',
+        'id;type;statut;priorite;contexte;contenu;texte_origine;tags;rappel;repetition;pre_alerte;inbox;cree_le;modifie_le;fait_le',
       );
     for (final i in items) {
       buffer.writeln(
@@ -65,6 +65,7 @@ class BackupService {
           _csv(i.raw ?? ''),
           _csv(i.tags.join(', ')),
           _date(i.remindAt),
+          i.recurrence == Recurrence.none ? '' : i.recurrence.label,
           i.preAlert ? 'oui' : 'non',
           i.inbox ? 'oui' : 'non',
           _date(i.createdAt),
@@ -118,6 +119,7 @@ class BackupService {
     'tags': i.tags,
     'remindAt': i.remindAt?.toUtc().toIso8601String(),
     'preAlert': i.preAlert,
+    'recurrence': i.recurrence.name,
     'notionUrl': i.notionUrl,
     'inbox': i.inbox,
     'createdAt': i.createdAt.toUtc().toIso8601String(),
@@ -158,6 +160,9 @@ class BackupService {
       raw: Value(text('raw')),
       context: Value(context),
       preAlert: Value(raw['preAlert'] == true),
+      recurrence: Value(
+        Recurrence.values.asNameMap()[raw['recurrence']] ?? Recurrence.none,
+      ),
       notionUrl: Value(text('notionUrl')),
       inbox: Value(raw['inbox'] != false),
       searchText: Value(buildSearchText(content, [...tags, ?context])),

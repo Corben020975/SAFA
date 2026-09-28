@@ -119,8 +119,17 @@ class _DetailScreenState extends State<DetailScreen> {
     );
     if (!done && mounted) {
       final messenger = ScaffoldMessenger.of(context);
+      final next = _item!;
       Navigator.of(context).pop();
-      messenger.showSnackBar(const SnackBar(content: Text('Marqué fait')));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            next.status != ItemStatus.done && next.remindAt != null
+                ? 'Fait · prochaine fois ${formatReminder(next.remindAt!)}'
+                : 'Marqué fait',
+          ),
+        ),
+      );
     }
   }
 
@@ -393,6 +402,11 @@ class _DetailScreenState extends State<DetailScreen> {
             onChanged: (d) =>
                 _save(item.copyWith(remindAt: Value(d)), reschedule: true),
           ),
+          if (item.remindAt != null)
+            RecurrenceField(
+              value: item.recurrence,
+              onChanged: (r) => _save(item.copyWith(recurrence: r)),
+            ),
           if (item.remindAt != null)
             PreAlertSwitch(
               value: item.preAlert,

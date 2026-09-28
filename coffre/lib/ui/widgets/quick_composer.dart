@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
 import '../../core/date_labels.dart';
+import '../../data/enums.dart';
 import '../../services/capture_analyzer.dart';
 import '../../services/notification_service.dart';
 import '../screens/capture_screen.dart';
@@ -93,6 +94,7 @@ class _QuickComposerState extends State<QuickComposer> {
       content: a.title,
       priority: a.priority,
       remindAt: at,
+      recurrence: at == null ? Recurrence.none : a.recurrence,
       context: a.context,
       raw: a.raw,
     );
@@ -261,7 +263,12 @@ class _QuickComposerState extends State<QuickComposer> {
                       InputChip(
                         visualDensity: VisualDensity.compact,
                         avatar: Icon(Icons.alarm, size: 16, color: p.sage),
-                        label: Text(formatReminder(_reminder!)),
+                        label: Text(
+                          _preview?.recurrence == null ||
+                                  _preview!.recurrence == Recurrence.none
+                              ? formatReminder(_reminder!)
+                              : '${formatReminder(_reminder!)} · ${_preview!.recurrence.short}',
+                        ),
                         tooltip: 'Changer la date ou l\'heure',
                         onPressed: _adjustReminder,
                         onDeleted: () => setState(() => _noReminder = true),

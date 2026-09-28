@@ -17,6 +17,8 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Dictée. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Verrouillage par empreinte (ou code du téléphone). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- Internet : uniquement pour l'assistant IA et Notion, sur demande. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Agenda du téléphone (Google Agenda synchronisé) : lire le jour, ajouter un rappel. -->
@@ -37,7 +39,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
@@ -53,6 +55,12 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- « Partager › Coffre » depuis Gmail, WhatsApp, Notes… -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
 

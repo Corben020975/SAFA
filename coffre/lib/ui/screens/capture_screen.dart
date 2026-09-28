@@ -5,7 +5,6 @@ import '../../core/date_labels.dart';
 import '../../data/enums.dart';
 import '../../services/capture_analyzer.dart';
 import '../../services/notification_service.dart';
-import '../../services/reminder_parser.dart';
 import '../theme.dart';
 import '../widgets/dictation_button.dart';
 import '../widgets/reminder_field.dart';
@@ -44,7 +43,8 @@ class _CaptureScreenState extends State<CaptureScreen> {
   List<String> _tags = [];
   DateTime? _remindAt;
   bool _preAlert = false;
-  ParsedReminder? _suggestion;
+  Analysis? _suggestion;
+  Recurrence _recurrence = Recurrence.none;
   bool _saving = false;
 
   /// Texte d'origine, conservé si « Appliquer » a nettoyé la saisie.
@@ -85,9 +85,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
     final text = _text.text.trim();
     final a = text.isEmpty ? null : CaptureAnalyzer.analyze(text);
     setState(() {
-      _suggestion = _remindAt == null && text.isNotEmpty
-          ? ReminderParser.parse(text)
-          : null;
+      _suggestion = _remindAt == null && a?.remindAt != null ? a : null;
       if (a == null) return;
       if (!_kindTouched) _kind = a.kind;
       if (!_priorityTouched) _priority = a.priority;
@@ -112,7 +110,8 @@ class _CaptureScreenState extends State<CaptureScreen> {
     final a = CaptureAnalyzer.analyze(original);
     final cleaned = a.title;
     setState(() {
-      _remindAt = s.when;
+      _remindAt = s.remindAt;
+      _recurrence = s.recurrence;
       _suggestion = null;
       _raw ??= original;
       // Le texte nettoyé ne doit pas relancer une autre lecture : on fige.
@@ -139,6 +138,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
       priority: _priority,
       tags: _tags,
       remindAt: _remindAt,
+      recurrence: _remindAt == null ? Recurrence.none : _recurrence,
       context: _context,
       preAlert: _remindAt != null && _preAlert,
       raw: _raw != null && _raw != content ? _raw : null,
@@ -253,7 +253,8 @@ class _CaptureScreenState extends State<CaptureScreen> {
                           color: scheme.onTertiaryContainer,
                         ),
                         title: Text(
-                          'Rappel détecté : ${formatReminder(_suggestion!.when)}',
+                          'Rappel détecté : ${formatReminder(_suggestion!.remindAt!)}'
+                          '${_suggestion!.recurrence == Recurrence.none ? '' : ' · ${_suggestion!.recurrence.short}'}',
                           style: TextStyle(color: scheme.onTertiaryContainer),
                         ),
                         subtitle: Text(
@@ -273,10 +274,16 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     onChanged: (d) => setState(() {
                       _remindAt = d;
                       if (d == null) {
-                        _suggestion = ReminderParser.parse(_text.text);
+                        final a = CaptureAnalyzer.analyze(_text.text.trim());
+                        _suggestion = a.remindAt != null ? a : null;
                       }
                     }),
                   ),
+                  if (_remindAt != null)
+                    RecurrenceField(
+                      value: _recurrence,
+                      onChanged: (r) => setState(() => _recurrence = r),
+                    ),
                   if (_remindAt != null)
                     PreAlertSwitch(
                       value: _preAlert,

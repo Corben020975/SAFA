@@ -13,7 +13,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -23,7 +23,8 @@ import java.io.IOException
  * Pont natif « coffre/system » : réglages batterie/notifications Samsung,
  * sélecteur de fichiers système (export/import) et actions du widget.
  */
-class MainActivity : FlutterActivity() {
+// FragmentActivity : requis par local_auth (verrouillage par empreinte).
+class MainActivity : FlutterFragmentActivity() {
 
     private var channel: MethodChannel? = null
 
@@ -340,9 +341,20 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun extractLaunchUri(intent: Intent?): String? {
-        val data = intent?.data ?: return null
-        if (data.scheme != "coffre") return null
+        if (intent == null) return null
         if ((intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) return null
+        // Texte partagé depuis une autre app → écran Capture prérempli.
+        if (intent.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            val text = listOfNotNull(
+                intent.getStringExtra(Intent.EXTRA_SUBJECT),
+                intent.getStringExtra(Intent.EXTRA_TEXT),
+            ).map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString("\n")
+            if (text.isEmpty()) return null
+            return Uri.Builder().scheme("coffre").authority("capture")
+                .appendQueryParameter("text", text.take(20000)).build().toString()
+        }
+        val data = intent.data ?: return null
+        if (data.scheme != "coffre") return null
         return data.toString()
     }
 

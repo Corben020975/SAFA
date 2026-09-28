@@ -152,6 +152,16 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<Recurrence, String> recurrence =
+      GeneratedColumn<String>(
+        'recurrence',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: Constant(Recurrence.none.name),
+      ).withConverter<Recurrence>($ItemsTable.$converterrecurrence);
   static const VerificationMeta _searchTextMeta = const VerificationMeta(
     'searchText',
   );
@@ -210,6 +220,7 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     preAlert,
     calendarEventId,
     notionUrl,
+    recurrence,
     searchText,
     createdAt,
     updatedAt,
@@ -380,6 +391,12 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         DriftSqlType.string,
         data['${effectivePrefix}notion_url'],
       ),
+      recurrence: $ItemsTable.$converterrecurrence.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}recurrence'],
+        )!,
+      ),
       searchText: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}search_text'],
@@ -412,6 +429,8 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
       const EnumIndexConverter<ItemPriority>(ItemPriority.values);
   static TypeConverter<List<String>, String> $convertertags =
       const TagsConverter();
+  static JsonTypeConverter2<Recurrence, String, String> $converterrecurrence =
+      const EnumNameConverter<Recurrence>(Recurrence.values);
 }
 
 class Item extends DataClass implements Insertable<Item> {
@@ -441,6 +460,9 @@ class Item extends DataClass implements Insertable<Item> {
   /// Page Notion créée depuis cet élément.
   final String? notionUrl;
 
+  /// Répétition du rappel (v4).
+  final Recurrence recurrence;
+
   /// Contenu + tags normalisés (voir text_normalize.dart), pour la recherche.
   final String searchText;
   final DateTime createdAt;
@@ -460,6 +482,7 @@ class Item extends DataClass implements Insertable<Item> {
     required this.preAlert,
     this.calendarEventId,
     this.notionUrl,
+    required this.recurrence,
     required this.searchText,
     required this.createdAt,
     required this.updatedAt,
@@ -503,6 +526,11 @@ class Item extends DataClass implements Insertable<Item> {
     if (!nullToAbsent || notionUrl != null) {
       map['notion_url'] = Variable<String>(notionUrl);
     }
+    {
+      map['recurrence'] = Variable<String>(
+        $ItemsTable.$converterrecurrence.toSql(recurrence),
+      );
+    }
     map['search_text'] = Variable<String>(searchText);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -535,6 +563,7 @@ class Item extends DataClass implements Insertable<Item> {
       notionUrl: notionUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(notionUrl),
+      recurrence: Value(recurrence),
       searchText: Value(searchText),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -569,6 +598,9 @@ class Item extends DataClass implements Insertable<Item> {
       preAlert: serializer.fromJson<bool>(json['preAlert']),
       calendarEventId: serializer.fromJson<int?>(json['calendarEventId']),
       notionUrl: serializer.fromJson<String?>(json['notionUrl']),
+      recurrence: $ItemsTable.$converterrecurrence.fromJson(
+        serializer.fromJson<String>(json['recurrence']),
+      ),
       searchText: serializer.fromJson<String>(json['searchText']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -598,6 +630,9 @@ class Item extends DataClass implements Insertable<Item> {
       'preAlert': serializer.toJson<bool>(preAlert),
       'calendarEventId': serializer.toJson<int?>(calendarEventId),
       'notionUrl': serializer.toJson<String?>(notionUrl),
+      'recurrence': serializer.toJson<String>(
+        $ItemsTable.$converterrecurrence.toJson(recurrence),
+      ),
       'searchText': serializer.toJson<String>(searchText),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -619,6 +654,7 @@ class Item extends DataClass implements Insertable<Item> {
     bool? preAlert,
     Value<int?> calendarEventId = const Value.absent(),
     Value<String?> notionUrl = const Value.absent(),
+    Recurrence? recurrence,
     String? searchText,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -639,6 +675,7 @@ class Item extends DataClass implements Insertable<Item> {
         ? calendarEventId.value
         : this.calendarEventId,
     notionUrl: notionUrl.present ? notionUrl.value : this.notionUrl,
+    recurrence: recurrence ?? this.recurrence,
     searchText: searchText ?? this.searchText,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -661,6 +698,9 @@ class Item extends DataClass implements Insertable<Item> {
           ? data.calendarEventId.value
           : this.calendarEventId,
       notionUrl: data.notionUrl.present ? data.notionUrl.value : this.notionUrl,
+      recurrence: data.recurrence.present
+          ? data.recurrence.value
+          : this.recurrence,
       searchText: data.searchText.present
           ? data.searchText.value
           : this.searchText,
@@ -686,6 +726,7 @@ class Item extends DataClass implements Insertable<Item> {
           ..write('preAlert: $preAlert, ')
           ..write('calendarEventId: $calendarEventId, ')
           ..write('notionUrl: $notionUrl, ')
+          ..write('recurrence: $recurrence, ')
           ..write('searchText: $searchText, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -709,6 +750,7 @@ class Item extends DataClass implements Insertable<Item> {
     preAlert,
     calendarEventId,
     notionUrl,
+    recurrence,
     searchText,
     createdAt,
     updatedAt,
@@ -731,6 +773,7 @@ class Item extends DataClass implements Insertable<Item> {
           other.preAlert == this.preAlert &&
           other.calendarEventId == this.calendarEventId &&
           other.notionUrl == this.notionUrl &&
+          other.recurrence == this.recurrence &&
           other.searchText == this.searchText &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -751,6 +794,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
   final Value<bool> preAlert;
   final Value<int?> calendarEventId;
   final Value<String?> notionUrl;
+  final Value<Recurrence> recurrence;
   final Value<String> searchText;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -769,6 +813,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.preAlert = const Value.absent(),
     this.calendarEventId = const Value.absent(),
     this.notionUrl = const Value.absent(),
+    this.recurrence = const Value.absent(),
     this.searchText = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -788,6 +833,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.preAlert = const Value.absent(),
     this.calendarEventId = const Value.absent(),
     this.notionUrl = const Value.absent(),
+    this.recurrence = const Value.absent(),
     this.searchText = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -810,6 +856,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Expression<bool>? preAlert,
     Expression<int>? calendarEventId,
     Expression<String>? notionUrl,
+    Expression<String>? recurrence,
     Expression<String>? searchText,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -829,6 +876,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       if (preAlert != null) 'pre_alert': preAlert,
       if (calendarEventId != null) 'calendar_event_id': calendarEventId,
       if (notionUrl != null) 'notion_url': notionUrl,
+      if (recurrence != null) 'recurrence': recurrence,
       if (searchText != null) 'search_text': searchText,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -850,6 +898,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Value<bool>? preAlert,
     Value<int?>? calendarEventId,
     Value<String?>? notionUrl,
+    Value<Recurrence>? recurrence,
     Value<String>? searchText,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -869,6 +918,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       preAlert: preAlert ?? this.preAlert,
       calendarEventId: calendarEventId ?? this.calendarEventId,
       notionUrl: notionUrl ?? this.notionUrl,
+      recurrence: recurrence ?? this.recurrence,
       searchText: searchText ?? this.searchText,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -926,6 +976,11 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     if (notionUrl.present) {
       map['notion_url'] = Variable<String>(notionUrl.value);
     }
+    if (recurrence.present) {
+      map['recurrence'] = Variable<String>(
+        $ItemsTable.$converterrecurrence.toSql(recurrence.value),
+      );
+    }
     if (searchText.present) {
       map['search_text'] = Variable<String>(searchText.value);
     }
@@ -957,6 +1012,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
           ..write('preAlert: $preAlert, ')
           ..write('calendarEventId: $calendarEventId, ')
           ..write('notionUrl: $notionUrl, ')
+          ..write('recurrence: $recurrence, ')
           ..write('searchText: $searchText, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -1210,6 +1266,7 @@ typedef $$ItemsTableCreateCompanionBuilder = ItemsCompanion Function({
   Value<bool> preAlert,
   Value<int?> calendarEventId,
   Value<String?> notionUrl,
+  Value<Recurrence> recurrence,
   Value<String> searchText,
   required DateTime createdAt,
   required DateTime updatedAt,
@@ -1229,6 +1286,7 @@ typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
   Value<bool> preAlert,
   Value<int?> calendarEventId,
   Value<String?> notionUrl,
+  Value<Recurrence> recurrence,
   Value<String> searchText,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -1310,6 +1368,12 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
   ColumnFilters<String> get notionUrl => $composableBuilder(
     column: $table.notionUrl,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Recurrence, Recurrence, String>
+  get recurrence => $composableBuilder(
+    column: $table.recurrence,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<String> get searchText => $composableBuilder(
@@ -1407,6 +1471,11 @@ class $$ItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get recurrence => $composableBuilder(
+    column: $table.recurrence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get searchText => $composableBuilder(
     column: $table.searchText,
     builder: (column) => ColumnOrderings(column),
@@ -1478,6 +1547,12 @@ class $$ItemsTableAnnotationComposer
   GeneratedColumn<String> get notionUrl =>
       $composableBuilder(column: $table.notionUrl, builder: (column) => column);
 
+  GeneratedColumnWithTypeConverter<Recurrence, String> get recurrence =>
+      $composableBuilder(
+        column: $table.recurrence,
+        builder: (column) => column,
+      );
+
   GeneratedColumn<String> get searchText => $composableBuilder(
     column: $table.searchText,
     builder: (column) => column,
@@ -1534,6 +1609,7 @@ class $$ItemsTableTableManager
                 Value<bool> preAlert = const Value.absent(),
                 Value<int?> calendarEventId = const Value.absent(),
                 Value<String?> notionUrl = const Value.absent(),
+                Value<Recurrence> recurrence = const Value.absent(),
                 Value<String> searchText = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -1552,6 +1628,7 @@ class $$ItemsTableTableManager
                 preAlert: preAlert,
                 calendarEventId: calendarEventId,
                 notionUrl: notionUrl,
+                recurrence: recurrence,
                 searchText: searchText,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -1572,6 +1649,7 @@ class $$ItemsTableTableManager
                 Value<bool> preAlert = const Value.absent(),
                 Value<int?> calendarEventId = const Value.absent(),
                 Value<String?> notionUrl = const Value.absent(),
+                Value<Recurrence> recurrence = const Value.absent(),
                 Value<String> searchText = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -1590,6 +1668,7 @@ class $$ItemsTableTableManager
                 preAlert: preAlert,
                 calendarEventId: calendarEventId,
                 notionUrl: notionUrl,
+                recurrence: recurrence,
                 searchText: searchText,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

@@ -147,12 +147,30 @@ class SettingsScreen extends StatelessWidget {
                     : 'Inactif : la bibliothèque de chiffrement n\'est pas chargée.',
               ),
             ),
+            SwitchListTile(
+              secondary: const Icon(Icons.fingerprint),
+              title: const Text('Verrouiller avec l\'empreinte'),
+              subtitle: const Text(
+                'À l\'ouverture et après 1 minute en arrière-plan. '
+                'Le code du téléphone est aussi accepté.',
+              ),
+              value: settings.appLock,
+              onChanged: (on) async {
+                if (!on) return s.lock.disable();
+                final messenger = ScaffoldMessenger.of(context);
+                if (!await s.lock.enable() && s.lock.error != null) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(s.lock.error!)),
+                  );
+                }
+              },
+            ),
             const ListTile(
               leading: Icon(Icons.wifi_tethering_off),
               title: Text('Internet seulement à ta demande'),
               subtitle: Text(
-                'Utilisé uniquement quand tu lances l\'assistant IA (Anthropic) '
-                'ou un envoi / une recherche Notion. Aucun compte Coffre, aucune statistique.',
+                'Utilisé uniquement quand tu lances l\'assistant IA (Gemini ou Claude) '
+                'ou un envoi / un import Notion. Aucun compte Coffre, aucune statistique.',
               ),
             ),
             FutureBuilder<String>(

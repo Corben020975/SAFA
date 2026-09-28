@@ -32,6 +32,9 @@ class AppSettings extends ChangeNotifier {
   bool aiConsent = false; // Claude
   bool aiConsentGemini = false;
 
+  /// Verrouillage par empreinte ou code du téléphone.
+  bool appLock = false;
+
   /// Agenda du téléphone (Google Agenda synchronisé).
   bool agendaEnabled = false;
   int? agendaCalendarId;
@@ -57,6 +60,7 @@ class AppSettings extends ChangeNotifier {
     aiMask = p['aiMask'] != 'false';
     aiConsent = p['aiConsent'] == 'true';
     aiConsentGemini = p['aiConsentGemini'] == 'true';
+    appLock = p['appLock'] == 'true';
     agendaEnabled = p['agendaEnabled'] == 'true';
     agendaCalendarId = int.tryParse(p['agendaCalendarId'] ?? '');
     agendaCalendarName = p['agendaCalendarName'];
@@ -115,6 +119,8 @@ class AppSettings extends ChangeNotifier {
           '$value',
         ),
       };
+  Future<void> setAppLock(bool value) =>
+      _set(() => appLock = value, 'appLock', '$value');
   Future<void> setAgendaEnabled(bool value) =>
       _set(() => agendaEnabled = value, 'agendaEnabled', '$value');
   Future<void> setAgendaCalendar(int id, String name) async {

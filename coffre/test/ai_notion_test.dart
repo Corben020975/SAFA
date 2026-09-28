@@ -28,6 +28,7 @@ Item _item({
   context: 'Travail',
   inbox: true,
   preAlert: false,
+  recurrence: Recurrence.none,
   searchText: '',
   createdAt: DateTime(2026, 9, 28),
   updatedAt: DateTime(2026, 9, 28),

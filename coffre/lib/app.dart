@@ -7,6 +7,7 @@ import 'services/launch_router.dart';
 import 'ui/screens/capture_screen.dart';
 import 'ui/screens/detail_screen.dart';
 import 'ui/screens/home_shell.dart';
+import 'ui/screens/lock_screen.dart';
 import 'ui/screens/onboarding_screen.dart';
 import 'ui/screens/settings_screen.dart';
 import 'ui/theme.dart';
@@ -30,11 +31,15 @@ class _CoffreAppState extends State<CoffreApp> {
   void initState() {
     super.initState();
     _lifecycle = AppLifecycleListener(
+      onPause: widget.services.lock.onPaused,
       // Filet de sécurité : relit les listes au retour au premier plan
       // (ex. snooze fait depuis la notification pendant que l'app dormait).
-      onResume: () => widget.services.db.notifyUpdates({
-        TableUpdate.onTable(widget.services.db.items),
-      }),
+      onResume: () {
+        widget.services.lock.onResumed();
+        widget.services.db.notifyUpdates({
+          TableUpdate.onTable(widget.services.db.items),
+        });
+      },
     );
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => widget.router.handleColdStart(),
@@ -88,6 +93,7 @@ class _CoffreAppState extends State<CoffreApp> {
           onGenerateRoute: _onGenerateRoute,
           builder: (context, child) {
             final mq = MediaQuery.of(context);
+            final lock = widget.services.lock;
             return MediaQuery(
               data: mq.copyWith(
                 textScaler: combinedTextScaler(
@@ -95,7 +101,16 @@ class _CoffreAppState extends State<CoffreApp> {
                   settings.textScale,
                 ),
               ),
-              child: child!,
+              child: ListenableBuilder(
+                listenable: lock,
+                builder: (context, _) => Stack(
+                  children: [
+                    ExcludeSemantics(excluding: lock.locked, child: child!),
+                    if (lock.locked)
+                      Positioned.fill(child: LockScreen(lock: lock)),
+                  ],
+                ),
+              ),
             );
           },
         ),

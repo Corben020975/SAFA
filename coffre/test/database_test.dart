@@ -97,7 +97,7 @@ void main() {
   });
 
   test(
-    'migration v1 → v3 : données conservées, nouvelles colonnes prêtes',
+    'migration v1 → v4 : données conservées, nouvelles colonnes prêtes',
     () async {
       final migrated = AppDatabase(
         NativeDatabase.memory(
@@ -122,6 +122,7 @@ void main() {
       expect(item.preAlert, isFalse);
       expect(item.calendarEventId, isNull);
       expect(item.notionUrl, isNull);
+      expect(item.recurrence, Recurrence.none);
       expect((await migrated.allPrefs())['theme'], 'dark');
 
       final saved = await migrated.saveItem(

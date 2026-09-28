@@ -1,3 +1,4 @@
+import '../core/reminder_defaults.dart';
 import '../core/text_normalize.dart';
 import '../data/enums.dart';
 import 'reminder_parser.dart';
@@ -9,6 +10,7 @@ class Analysis {
     required this.title,
     required this.priority,
     this.remindAt,
+    this.recurrence = Recurrence.none,
     this.context,
     this.raw,
   });
@@ -19,6 +21,7 @@ class Analysis {
   final String title;
   final ItemPriority priority;
   final DateTime? remindAt;
+  final Recurrence recurrence;
   final String? context;
 
   /// Texte d'origine, seulement s'il diffère du titre.
@@ -96,8 +99,22 @@ class CaptureAnalyzer {
     final text = input.replaceAll(RegExp(r'[ \t]+'), ' ').trim();
     final folded = foldKeepingLength(text);
 
-    final reminder = ReminderParser.parse(text, now: now);
-    var title = reminder != null ? ReminderParser.strip(text, reminder) : text;
+    // « chaque lundi à 9h » : la répétition d'abord, puis la date.
+    final repeat = ReminderParser.extractRecurrence(text);
+    final source = repeat?.text ?? text;
+    final reminder = ReminderParser.parse(source, now: now);
+    var title = reminder != null
+        ? ReminderParser.strip(source, reminder)
+        : source;
+    final remindAt =
+        reminder?.when ??
+        (repeat == null
+            ? null
+            : ReminderParser.firstAt(
+                repeat.time ?? ReminderDefaults.morning,
+                now,
+                repeat.recurrence,
+              ));
     for (var i = 0; i < 3; i++) {
       title = title.replaceFirst(_lead, '');
     }
@@ -115,12 +132,13 @@ class CaptureAnalyzer {
     if (title.isEmpty) title = text;
     title = title[0].toUpperCase() + title.substring(1);
 
-    final kind = _kindOf(folded, hasDate: reminder != null);
+    final kind = _kindOf(folded, hasDate: remindAt != null);
     return Analysis(
       kind: kind,
       title: title,
-      priority: _priorityOf(folded, kind, reminder?.when, now),
-      remindAt: reminder?.when,
+      priority: _priorityOf(folded, kind, remindAt, now),
+      remindAt: remindAt,
+      recurrence: repeat?.recurrence ?? Recurrence.none,
       context: _contextOf(folded),
       raw: title == text ? null : text,
     );

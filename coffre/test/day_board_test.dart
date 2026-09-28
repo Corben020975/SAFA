@@ -25,6 +25,7 @@ void main() {
     remindAt: at,
     inbox: true,
     preAlert: preAlert,
+    recurrence: Recurrence.none,
     searchText: '',
     createdAt: created ?? now.subtract(const Duration(days: 1)),
     updatedAt: now,

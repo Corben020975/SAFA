@@ -23,18 +23,27 @@ class ItemActions {
       wasDone ? ItemStatus.todo : ItemStatus.done,
     );
     if (updated != null) await s.notifications.schedule(updated);
+    // Élément répété : il revient à sa prochaine date au lieu de se clore.
+    final repeated =
+        !wasDone && updated != null && updated.status != ItemStatus.done;
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(wasDone ? 'Réactivé' : 'Fait · ${_short(item)}'),
+          content: Text(
+            wasDone
+                ? 'Réactivé'
+                : repeated && updated.remindAt != null
+                ? 'Fait · prochaine fois ${formatReminder(updated.remindAt!)}'
+                : 'Fait · ${_short(item)}',
+          ),
           persist: false,
           duration: kUndoDuration,
           action: SnackBarAction(
             label: 'Annuler',
             onPressed: () async {
-              final restored = await s.db.setStatus(item.id, item.status);
-              if (restored != null) await s.notifications.schedule(restored);
+              await s.db.restoreItem(item);
+              await s.notifications.schedule(item);
             },
           ),
         ),
@@ -138,12 +147,15 @@ class ItemActions {
 /// « Tâche · Santé »
 String itemMeta(Item item) => [item.kind.label, ?item.context].join(' · ');
 
-/// « Demain 09:00 » ou « En retard · Hier 09:00 ».
+/// « Demain 09:00 », « En retard · Hier 09:00 », « Lundi 09:00 · chaque semaine ».
 String? itemWhen(Item item, DateTime now) {
   final at = item.remindAt;
   if (at == null) return null;
   final overdue = item.status != ItemStatus.done && at.isBefore(now);
-  return overdue
+  final label = overdue
       ? 'En retard · ${formatReminder(at, now: now)}'
       : formatReminder(at, now: now);
+  return item.recurrence == Recurrence.none
+      ? label
+      : '$label · ${item.recurrence.short}';
 }

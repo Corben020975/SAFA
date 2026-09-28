@@ -86,10 +86,14 @@ class _ItemCardState extends State<ItemCard> {
                       color: overdue ? p.coral : p.sage,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      when,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: overdue ? p.coral : p.sage,
+                    Flexible(
+                      child: Text(
+                        when,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: overdue ? p.coral : p.sage,
+                        ),
                       ),
                     ),
                     if (item.preAlert) ...[
