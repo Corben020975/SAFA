@@ -1,9 +1,10 @@
+import 'dart:async';
+
 import 'package:coffre/app.dart';
 import 'package:coffre/core/app_services.dart';
 import 'package:coffre/data/app_settings.dart';
 import 'package:coffre/data/backup_service.dart';
 import 'package:coffre/data/database.dart';
-import 'package:coffre/data/enums.dart';
 import 'package:coffre/services/ai/ai_assistant.dart';
 import 'package:coffre/services/ai/claude_client.dart';
 import 'package:coffre/services/ai/nano_client.dart';
@@ -13,7 +14,6 @@ import 'package:coffre/services/secret_store.dart';
 import 'package:coffre/services/notification_service.dart';
 import 'package:coffre/services/speech_service.dart';
 import 'package:coffre/services/system_channel.dart';
-import 'package:coffre/ui/widgets/item_card.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -61,15 +61,32 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('Jour, capture rapide analysée, Fait, puis Flux', (tester) async {
+  testWidgets('Réglages IA : moteur, téléchargement de Gemini Nano', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
+
+    // Pont Android simulé : modèle à télécharger, téléchargement piloté.
+    var status = 'downloadable';
+    final download = Completer<bool>();
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(
+      const MethodChannel('coffre/nano'),
+      (call) async => switch (call.method) {
+        'status' => {'status': status},
+        'download' => download.future,
+        _ => null,
+      },
+    );
 
     final db = AppDatabase(NativeDatabase.memory());
     final settings = AppSettings(db)..onboardingDone = true;
     final system = SystemChannel();
     final notifications = NotificationService();
+    final nano = NanoClient();
     final services = AppServices(
       db: db,
       settings: settings,
@@ -78,99 +95,75 @@ void main() {
       system: system,
       backup: BackupService(db, system, notifications),
       secrets: SecretStore(),
-      ai: AiAssistant(ClaudeClient(() async => null), NanoClient(), settings),
-      nano: NanoClient(),
+      ai: AiAssistant(ClaudeClient(() async => null), nano, settings),
+      nano: nano,
       notion: NotionService(() async => null),
       encryptionActive: false,
     );
-
-    await tester.runAsync(() async {
-      await db.createItem(
-        kind: ItemKind.task,
-        content: 'Appeler le médecin',
-        remindAt: DateTime.now().add(const Duration(hours: 1)),
-        context: 'Santé',
-      );
-      await db.createItem(kind: ItemKind.idea, content: 'Idée de prompt');
-    });
-
+    final key = GlobalKey<NavigatorState>();
     await tester.pumpWidget(
       CoffreApp(
         services: services,
-        router: LaunchRouter(
-          GlobalKey<NavigatorState>(),
-          system,
-          notifications,
-        ),
+        router: LaunchRouter(key, system, notifications),
       ),
     );
     await settle(tester);
-
-    // Vue Jour : rubrique Maintenant + idée à ne pas perdre.
-    expect(find.text('1 chose maintenant.'), findsOneWidget);
-    expect(find.text('Appeler le médecin'), findsOneWidget);
-    expect(find.text('Tâche · Santé'), findsOneWidget);
-    await tester.drag(
-      find.byType(CustomScrollView).first,
-      const Offset(0, -400),
+    key.currentState!.pushNamed('/settings');
+    await settle(tester);
+    final list = find.byType(Scrollable).hitTestable().first;
+    await tester.scrollUntilVisible(
+      find.text('Gemini Nano'),
+      200,
+      scrollable: list,
     );
     await settle(tester);
-    expect(find.text('À ne pas perdre'), findsOneWidget);
-    expect(find.text('Idée de prompt'), findsOneWidget);
-    await tester.drag(
-      find.byType(CustomScrollView).first,
-      const Offset(0, 800),
+    expect(find.text('Modèle à télécharger (1 à 2 Go)'), findsOneWidget);
+
+    // Bascule vers Claude puis retour : le choix est enregistré.
+    await tester.ensureVisible(find.text('Claude en ligne'));
+    await settle(tester);
+    await tester.tap(find.text('Claude en ligne'));
+    await settle(tester);
+    expect(settings.aiProvider, AiProvider.claude);
+    await tester.scrollUntilVisible(
+      find.text('Clé API Claude'),
+      200,
+      scrollable: list,
+    );
+    await tester.ensureVisible(find.text('Sur le téléphone'));
+    await settle(tester);
+    await tester.tap(find.text('Sur le téléphone'));
+    await settle(tester);
+    expect(settings.aiProvider, AiProvider.nano);
+
+    // Téléchargement : progression affichée, puis modèle prêt.
+    await tester.ensureVisible(find.text('Télécharger'));
+    await settle(tester);
+    await tester.tap(find.text('Télécharger'));
+    await settle(tester);
+    expect(find.text('Téléchargement de Gemini Nano'), findsOneWidget);
+    await tester.runAsync(
+      () => messenger.handlePlatformMessage(
+        'coffre/nano',
+        const StandardMethodCodec().encodeMethodCall(
+          const MethodCall('progress', {
+            'done': 420000000,
+            'total': 1000000000,
+          }),
+        ),
+        (_) {},
+      ),
     );
     await settle(tester);
+    expect(find.text('42 % · 420 Mo / 1000 Mo'), findsOneWidget);
 
-    // Capture rapide : aperçu de l'analyse avant envoi, puis enregistrement.
-    await tester.enterText(
-      find.byType(TextField).last,
-      'Il faut que je paye la facture dans 3 jours',
-    );
+    status = 'available';
+    download.complete(true);
     await settle(tester);
-    expect(find.textContaining('Tâche · Admin'), findsOneWidget);
-    await tester.tap(find.byTooltip('Enregistrer'));
     await settle(tester);
-    expect(find.textContaining('Enregistré · Tâche · Admin'), findsOneWidget);
-    final created = (await tester.runAsync(db.allItems))!.last;
-    expect(created.content, 'Paye la facture');
-    expect(created.raw, 'Il faut que je paye la facture dans 3 jours');
-    expect(created.context, 'Admin');
-    expect(created.remindAt, isNotNull);
-
-    // Laisse le bandeau de confirmation disparaître avant de toucher la carte.
-    await tester.pump(
-      const Duration(seconds: 1),
-    ); // fin de l'animation d'entrée
-    await tester.pump(const Duration(seconds: 6)); // délai de 5 s écoulé
-    await tester.pump(const Duration(seconds: 1)); // animation de sortie
-    await settle(tester);
-    expect(find.textContaining('Enregistré · Tâche'), findsNothing);
-
-    // « Fait » depuis la carte : la tâche quitte la vue Jour, l'alarme est annulée.
-    final card = find.ancestor(
-      of: find.text('Appeler le médecin'),
-      matching: find.byType(ItemCard),
-    );
-    await tester.tap(find.descendant(of: card, matching: find.text('Fait')));
-    await settle(tester);
-    expect(find.text('Appeler le médecin'), findsNothing);
-    expect(calls, contains('cancel'));
-
-    // Vue Flux, filtre « Fait ».
-    FocusManager.instance.primaryFocus?.unfocus();
-    await settle(tester);
-    await tester.tap(find.text('Flux'));
-    await settle(tester);
-    final doneChip = find.widgetWithText(ChoiceChip, 'Fait');
-    await tester.ensureVisible(doneChip);
-    await tester.tap(doneChip);
-    await settle(tester);
-    expect(find.text('Appeler le médecin'), findsOneWidget);
-
-    await tester.pumpWidget(const SizedBox());
-    await settle(tester);
+    expect(find.text('Téléchargement de Gemini Nano'), findsNothing);
+    expect(find.text('Prêt · fonctionne hors ligne'), findsOneWidget);
+    expect(find.text('Tester'), findsOneWidget);
     await tester.runAsync(db.close);
   });
 }

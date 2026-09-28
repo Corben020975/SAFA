@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
 import '../../core/reminder_defaults.dart';
+import '../../data/app_settings.dart';
+import '../../services/ai/nano_client.dart';
 import '../../services/notion_service.dart';
 import '../../services/secret_store.dart';
 import '../../services/system_channel.dart';
 import '../theme.dart';
+import '../widgets/ai_sheet.dart';
 
 /// Heures utilisées par « demain », « lundi », « ce soir » et les raccourcis.
 class DefaultTimesTiles extends StatelessWidget {
@@ -112,6 +115,7 @@ class AiSettingsSection extends StatefulWidget {
 class _AiSettingsSectionState extends State<AiSettingsSection> {
   late final AppServices _s = AppScope.of(context);
   bool? _hasKey;
+  NanoStatus? _nano;
   bool _testing = false;
   bool _started = false;
 
@@ -125,7 +129,22 @@ class _AiSettingsSectionState extends State<AiSettingsSection> {
 
   Future<void> _refresh() async {
     final has = await _s.secrets.has(SecretStore.aiKey);
-    if (mounted) setState(() => _hasKey = has);
+    final nano = await _s.nano.status();
+    if (mounted) {
+      setState(() {
+        _hasKey = has;
+        _nano = nano;
+      });
+    }
+  }
+
+  Future<void> _download() async {
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => NanoDownloadDialog(nano: _s.nano),
+    );
+    await _refresh();
   }
 
   Future<void> _editKey() async {
@@ -146,7 +165,8 @@ class _AiSettingsSectionState extends State<AiSettingsSection> {
     setState(() => _testing = true);
     try {
       await _s.ai.ask('Réponds uniquement : OK');
-      if (mounted) _snack(context, 'Claude répond. L\'assistant est prêt.');
+      final name = _s.ai.onDevice ? 'Gemini Nano' : 'Claude';
+      if (mounted) _snack(context, '$name répond. L\'assistant est prêt.');
     } catch (e) {
       if (mounted) _snack(context, '$e');
     } finally {
@@ -154,45 +174,120 @@ class _AiSettingsSectionState extends State<AiSettingsSection> {
     }
   }
 
+  Widget get _testButton => _testing
+      ? const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        )
+      : TextButton(onPressed: _test, child: const Text('Tester'));
+
+  List<Widget> _nanoTiles() {
+    final status = _nano;
+    final Widget? action = switch (status) {
+      null => null,
+      NanoStatus.available => _testButton,
+      NanoStatus.downloadable || NanoStatus.downloading => FilledButton.tonal(
+        onPressed: _download,
+        child: Text(
+          status == NanoStatus.downloadable ? 'Télécharger' : 'Suivre',
+        ),
+      ),
+      NanoStatus.unavailable => TextButton(
+        onPressed: _refresh,
+        child: const Text('Réessayer'),
+      ),
+    };
+    return [
+      ListTile(
+        leading: const Icon(Icons.memory),
+        title: const Text('Gemini Nano'),
+        subtitle: ValueListenableBuilder<NanoProgress?>(
+          valueListenable: _s.nano.progress,
+          builder: (context, p, _) => Text(switch (status) {
+            null => '…',
+            NanoStatus.available => 'Prêt · fonctionne hors ligne',
+            NanoStatus.downloadable => 'Modèle à télécharger (1 à 2 Go)',
+            NanoStatus.downloading =>
+              p?.ratio == null
+                  ? 'Téléchargement en cours…'
+                  : 'Téléchargement : ${(p!.ratio! * 100).round()} %',
+            NanoStatus.unavailable =>
+              'Indisponible sur ce téléphone pour l\'instant',
+          }),
+        ),
+        trailing: action,
+      ),
+      const _Note(
+        'Gratuit et privé : le modèle tourne dans le téléphone, rien n\'est envoyé. '
+        'Plus modeste que Claude : réponses plus courtes, parfois moins précises.',
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = _s.settings;
-    return Column(
-      children: [
-        ListTile(
-          leading: const Icon(Icons.key_outlined),
-          title: const Text('Clé API Claude'),
-          subtitle: Text(
-            _hasKey == null ? '…' : (_hasKey! ? 'Configurée' : 'À ajouter'),
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) => Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<AiProvider>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: AiProvider.nano,
+                    label: Text('Sur le téléphone'),
+                  ),
+                  ButtonSegment(
+                    value: AiProvider.claude,
+                    label: Text('Claude en ligne'),
+                  ),
+                ],
+                selected: {settings.aiProvider},
+                onSelectionChanged: (v) => settings.setAiProvider(v.first),
+              ),
+            ),
           ),
-          onTap: _editKey,
-          trailing: _hasKey == true
-              ? (_testing
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : TextButton(onPressed: _test, child: const Text('Tester')))
-              : null,
-        ),
-        SwitchListTile(
-          secondary: const Icon(Icons.shield_outlined),
-          title: const Text('Masquer les données personnelles'),
-          subtitle: const Text(
-            'Noms avec civilité (Mme Dupont), n° national, téléphone, e-mail, IBAN : '
-            'remplacés avant l\'envoi, remis dans la réponse.',
-          ),
-          value: settings.aiMask,
-          onChanged: settings.setAiMask,
-        ),
-        const _Note(
-          'Modèle Claude Opus 5. Rien n\'est envoyé sans ton geste : bouton ✦ sur un élément '
-          'ou « Brief du jour ». Secret professionnel : pas de détail sensible sur un bénéficiaire.',
-        ),
-      ],
+          if (settings.aiProvider == AiProvider.nano)
+            ..._nanoTiles()
+          else
+            ..._claudeTiles(settings),
+        ],
+      ),
     );
   }
+
+  List<Widget> _claudeTiles(AppSettings settings) => [
+    ListTile(
+      leading: const Icon(Icons.key_outlined),
+      title: const Text('Clé API Claude'),
+      subtitle: Text(
+        _hasKey == null ? '…' : (_hasKey! ? 'Configurée' : 'À ajouter'),
+      ),
+      onTap: _editKey,
+      trailing: _hasKey == true ? _testButton : null,
+    ),
+    SwitchListTile(
+      secondary: const Icon(Icons.shield_outlined),
+      title: const Text('Masquer les données personnelles'),
+      subtitle: const Text(
+        'Noms avec civilité (Mme Dupont), n° national, téléphone, e-mail, IBAN : '
+        'remplacés avant l\'envoi, remis dans la réponse.',
+      ),
+      value: settings.aiMask,
+      onChanged: settings.setAiMask,
+    ),
+    const _Note(
+      'Modèle Claude Opus 5, payant à l\'usage. Rien n\'est envoyé sans ton geste : bouton ✦ '
+      'sur un élément ou « Brief du jour ». Secret professionnel : pas de détail sensible '
+      'sur un bénéficiaire.',
+    ),
+  ];
 }
 
 class AgendaSettingsSection extends StatelessWidget {

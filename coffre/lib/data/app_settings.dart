@@ -24,6 +24,9 @@ class AppSettings extends ChangeNotifier {
   int morningMinutes = 9 * 60;
   int eveningMinutes = 18 * 60;
 
+  /// Moteur IA : Gemini Nano sur le téléphone (par défaut) ou Claude en ligne.
+  AiProvider aiProvider = AiProvider.nano;
+
   /// Assistant IA : données personnelles masquées avant envoi (par défaut).
   bool aiMask = true;
   bool aiConsent = false;
@@ -48,6 +51,8 @@ class AppSettings extends ChangeNotifier {
     lastExportAt = DateTime.tryParse(p['lastExportAt'] ?? '');
     morningMinutes = int.tryParse(p['morning'] ?? '') ?? 9 * 60;
     eveningMinutes = int.tryParse(p['evening'] ?? '') ?? 18 * 60;
+    aiProvider =
+        AiProvider.values.asNameMap()[p['aiProvider']] ?? AiProvider.nano;
     aiMask = p['aiMask'] != 'false';
     aiConsent = p['aiConsent'] == 'true';
     agendaEnabled = p['agendaEnabled'] == 'true';
@@ -85,6 +90,8 @@ class AppSettings extends ChangeNotifier {
     'evening',
     '$minutes',
   );
+  Future<void> setAiProvider(AiProvider value) =>
+      _set(() => aiProvider = value, 'aiProvider', value.name);
   Future<void> setAiMask(bool value) =>
       _set(() => aiMask = value, 'aiMask', '$value');
   Future<void> setAiConsent(bool value) =>
@@ -132,3 +139,5 @@ class AppSettings extends ChangeNotifier {
     await _db.setPref(key, value);
   }
 }
+
+enum AiProvider { nano, claude }

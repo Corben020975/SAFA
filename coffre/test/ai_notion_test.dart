@@ -4,9 +4,12 @@ import 'package:coffre/data/app_settings.dart';
 import 'package:coffre/data/database.dart';
 import 'package:coffre/data/enums.dart';
 import 'package:coffre/services/ai/ai_assistant.dart';
+import 'package:coffre/services/ai/ai_engine.dart';
 import 'package:coffre/services/ai/claude_client.dart';
+import 'package:coffre/services/ai/nano_client.dart';
 import 'package:coffre/services/notion_service.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -30,7 +33,31 @@ Item _item({
   updatedAt: DateTime(2026, 9, 28),
 );
 
+class _FakeEngine implements AiEngine {
+  _FakeEngine([this.answer = 'ok']);
+  final String answer;
+  String? system;
+  String? prompt;
+  String? effort;
+  int calls = 0;
+
+  @override
+  Future<String> complete({
+    required String system,
+    required String prompt,
+    String effort = 'low',
+  }) async {
+    calls++;
+    this.system = system;
+    this.prompt = prompt;
+    this.effort = effort;
+    return answer;
+  }
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('Claude', () {
     test(
       'requête : modèle, repli serveur, en-têtes, et données masquées',
@@ -53,7 +80,8 @@ void main() {
         );
         final db = AppDatabase(NativeDatabase.memory());
         final settings = AppSettings(db);
-        final assistant = AiAssistant(client, settings);
+        await settings.setAiProvider(AiProvider.claude);
+        final assistant = AiAssistant(client, _FakeEngine(), settings);
 
         final answer = await assistant.run(AiAction.steps, _item());
 
@@ -193,6 +221,72 @@ void main() {
         notion.listTargets(),
         throwsA(predicate((e) => '$e'.contains('partage-la'))),
       );
+    });
+  });
+
+  group('Gemini Nano', () {
+    const channel = MethodChannel('coffre/nano');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    tearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    test('par défaut : moteur local, texte envoyé tel quel', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      final settings = AppSettings(db);
+      await settings.load();
+      final claude = _FakeEngine();
+      final nano = _FakeEngine('- Appeler Mme Dupont');
+      final assistant = AiAssistant(claude, nano, settings);
+
+      expect(settings.aiProvider, AiProvider.nano);
+      final answer = await assistant.run(AiAction.develop, _item());
+
+      expect(claude.calls, 0);
+      expect(nano.prompt, contains('Mme Dupont'));
+      expect(nano.system, isNot(contains('[PERSONNE')));
+      expect(nano.system, contains('80 à 150'));
+      expect(nano.effort, 'medium');
+      expect(answer, '- Appeler Mme Dupont');
+      await db.close();
+    });
+
+    test('statut, génération et erreurs du pont Android', () async {
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        switch (call.method) {
+          case 'status':
+            return {'status': 'downloadable'};
+          case 'generate':
+            final prompt = (call.arguments as Map)['prompt'] as String;
+            if (prompt == 'bg') {
+              throw PlatformException(
+                code: 'generate',
+                message: 'Inference in background is not allowed',
+              );
+            }
+            return '  Réponse locale  ';
+        }
+        return null;
+      });
+      final nano = NanoClient();
+
+      expect(await nano.status(), NanoStatus.downloadable);
+      expect(
+        await nano.complete(system: 's', prompt: 'x' * 7000, effort: 'medium'),
+        'Réponse locale',
+      );
+      final args = calls.last.arguments as Map;
+      expect(args['maxTokens'], 1024);
+      expect((args['prompt'] as String).length, NanoClient.maxInputChars + 1);
+      expect(
+        () => nano.complete(system: 's', prompt: 'bg'),
+        throwsA(predicate((e) => '$e'.contains('Garde Coffre ouvert'))),
+      );
+    });
+
+    test('hors Android : indisponible, sans planter', () async {
+      expect(await NanoClient().status(), NanoStatus.unavailable);
     });
   });
 }

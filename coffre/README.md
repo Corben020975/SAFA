@@ -9,11 +9,12 @@ Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrée
   et le contexte (Travail, Santé, Admin…), tu relis l'aperçu, tu envoies. Le texte d'origine est gardé.
 - **Plus tard** sur chaque carte, **pré-alerte** 1 h 30 avant un rendez-vous, report 5/15/60 min depuis la notification.
 - **Rappel réglable** : date et heure modifiables séparément, heures « matin » et « soir » par défaut au choix (Réglages).
-- **Assistant IA** (Claude, optionnel) : synthétiser, développer, découper en tâches, reformuler, rédiger un message, brief du jour.
+- **Assistant IA** : synthétiser, développer, découper en tâches, reformuler, rédiger un message, brief du jour.
+  Au choix : **Gemini Nano** sur le téléphone (gratuit, hors ligne) ou **Claude** en ligne (payant, plus puissant).
 - **Agenda Google** : rendez-vous du jour dans *Jour*, ajout d'un rappel à l'agenda (via l'agenda du téléphone, sans connexion Google).
 - **Notion** (optionnel) : envoyer un élément dans une base Notion.
 
-- **Aucun compte, aucun serveur, aucune statistique.** Internet sert uniquement à l'IA et à Notion, quand tu le demandes.
+- **Aucun compte, aucun serveur, aucune statistique.** Internet sert uniquement à Claude et à Notion, quand tu le demandes.
 - **Base chiffrée** (SQLite3 Multiple Ciphers, ChaCha20). La clé est générée au premier lancement et reste dans le Keystore Android.
 - **Sauvegarde** : export JSON (restaurable) ou CSV (Excel), à l'endroit que tu choisis. ⚠️ Ces fichiers ne sont pas chiffrés.
 
@@ -147,9 +148,16 @@ L'assistant « Rappels fiables » s'ouvre au premier lancement. Il est aussi acc
 
 Tout est optionnel et se règle dans *Réglages*. Les clés restent dans le Keystore du téléphone et ne sont jamais exportées.
 
-**Assistant IA (Claude)**
+**Assistant IA sur le téléphone (Gemini Nano, par défaut)**
+1. Vérifier qu'**AICore** est présent : *Paramètres › Applications* › filtre › *Afficher les applications système* › AICore.
+2. *Réglages › Assistant IA* › *Sur le téléphone* › **Télécharger** (1 à 2 Go, une seule fois, en Wi-Fi). Garder Coffre ouvert pendant le téléchargement.
+3. Ensuite tout fonctionne hors ligne : rien ne quitte le téléphone. Réponses plus courtes qu'avec Claude.
+
+Si Coffre affiche « indisponible » : mettre à jour AICore et *Paramètres › Sécurité et confidentialité › Mises à jour › Mise à jour du système Google Play*, redémarrer, réessayer.
+
+**Assistant IA en ligne (Claude, optionnel)**
 1. Sur [console.anthropic.com](https://console.anthropic.com) : créer un compte, ajouter du crédit (paiement à l'usage), *API Keys › Create Key*.
-2. *Réglages › Assistant IA › Clé API Claude* : coller la clé, puis *Tester*.
+2. *Réglages › Assistant IA* › *Claude en ligne* › *Clé API Claude* : coller la clé, puis *Tester*.
 3. Dans un élément : bouton ✦ ou *Assistant IA*. Dans *Jour* : icône ✦ pour le brief du jour.
 
 Avant chaque envoi, Coffre masque les noms précédés d'une civilité (Mme, M., Dr…), n° de registre national, téléphones, e-mails et IBAN, puis les remet dans la réponse. Le masquage ne détecte pas tout : pas d'information sensible sur un bénéficiaire (secret professionnel).
@@ -198,11 +206,11 @@ lib/
   core/                   services partagés, normalisation texte, formats de date
   data/                   Drift (tables, requêtes), chiffrement, réglages, sauvegarde
   services/               notifications (+ isolate snooze), dictée, analyse de saisie, dates, vue Jour, pont Android
-  services/ai/            client Claude (HTTP), assistant, masquage des données personnelles
+  services/ai/            Gemini Nano (pont Android), client Claude (HTTP), assistant, masquage
   services/notion_service.dart   API Notion (jeton d'intégration)
   ui/screens/             accueil (Jour + Flux), Capture, Détail, Réglages, Rappels fiables
   ui/views/               vues Jour et Flux, agenda du jour, bandeaux d'alerte
   ui/widgets/             carte, ligne, barre de capture, sélecteurs, rappel, tags, micro, assistant IA
-android/app/src/main/     Manifest, MainActivity.kt, widget, icônes
+android/app/src/main/     Manifest, MainActivity.kt, NanoBridge.kt (Gemini Nano), widget, icônes
 test/                     base + chiffrement, parseur de dates, parcours Inbox, IA, Notion, masquage
 ```

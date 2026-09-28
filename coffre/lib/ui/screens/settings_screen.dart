@@ -102,7 +102,7 @@ class SettingsScreen extends StatelessWidget {
               onTap: s.system.openNotificationSettings,
             ),
             const DefaultTimesTiles(),
-            const _Header('Assistant IA (Claude)'),
+            const _Header('Assistant IA'),
             const AiSettingsSection(),
             const _Header('Agenda Google'),
             const AgendaSettingsSection(),

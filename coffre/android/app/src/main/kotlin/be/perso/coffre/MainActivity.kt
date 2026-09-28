@@ -27,6 +27,9 @@ class MainActivity : FlutterActivity() {
 
     private var channel: MethodChannel? = null
 
+    /** Gemini Nano (IA sur le téléphone). */
+    private var nano: NanoBridge? = null
+
     /** Action du widget reçue au démarrage, lue une fois par Flutter. */
     private var pendingLaunchUri: String? = null
 
@@ -55,6 +58,13 @@ class MainActivity : FlutterActivity() {
         channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).also {
             it.setMethodCallHandler(::onMethodCall)
         }
+        nano = NanoBridge(flutterEngine.dartExecutor.binaryMessenger)
+    }
+
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        nano?.dispose()
+        nano = null
+        super.cleanUpFlutterEngine(flutterEngine)
     }
 
     private fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {

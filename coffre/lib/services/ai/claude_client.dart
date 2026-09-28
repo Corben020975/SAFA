@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import 'ai_engine.dart';
+
 class AiException implements Exception {
   const AiException(this.message);
   final String message;
@@ -14,7 +16,7 @@ class AiException implements Exception {
 
 /// Appel direct de l'API Claude (Messages) en HTTP : il n'existe pas de SDK
 /// Anthropic officiel pour Dart/Flutter.
-class ClaudeClient {
+class ClaudeClient implements AiEngine {
   ClaudeClient(this._apiKey, {http.Client? client})
     : _client = client ?? http.Client();
 
@@ -43,6 +45,7 @@ class ClaudeClient {
     ],
   };
 
+  @override
   Future<String> complete({
     required String system,
     required String prompt,
