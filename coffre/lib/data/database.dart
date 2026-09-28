@@ -188,12 +188,18 @@ class AppDatabase extends _$AppDatabase {
     String? raw,
     String? context,
     bool preAlert = false,
+    ItemStatus status = ItemStatus.todo,
+    bool inbox = true,
+    String? notionUrl,
   }) async {
     final now = DateTime.now();
     final id = await into(items).insert(
       ItemsCompanion.insert(
         kind: kind,
         content: content.trim(),
+        status: Value(status),
+        inbox: Value(inbox),
+        notionUrl: Value(notionUrl),
         priority: Value(priority),
         tags: Value(tags),
         remindAt: Value(remindAt),
@@ -259,6 +265,14 @@ class AppDatabase extends _$AppDatabase {
 
   /// Import d'une sauvegarde : ignore les doublons (même date de création
   /// et même contenu). Retourne les éléments réellement ajoutés.
+  /// Liens Notion déjà connus (envoyés ou importés) : pas de doublon.
+  Future<Set<String>> notionUrls() async {
+    final query = selectOnly(items)
+      ..addColumns([items.notionUrl])
+      ..where(items.notionUrl.isNotNull());
+    return {for (final row in await query.get()) row.read(items.notionUrl)!};
+  }
+
   Future<List<Item>> importItems(List<ItemsCompanion> incoming) {
     return transaction(() async {
       final added = <Item>[];

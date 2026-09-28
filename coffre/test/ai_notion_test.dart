@@ -7,6 +7,7 @@ import 'package:coffre/services/ai/ai_assistant.dart';
 import 'package:coffre/services/ai/ai_engine.dart';
 import 'package:coffre/services/ai/claude_client.dart';
 import 'package:coffre/services/ai/gemini_client.dart';
+import 'package:coffre/services/notion_import.dart';
 import 'package:coffre/services/notion_service.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -331,6 +332,193 @@ void main() {
         () => GeminiClient(() async => null).complete(system: 's', prompt: 'p'),
         throwsA(predicate((e) => '$e'.contains('clé API Gemini'))),
       );
+    });
+  });
+
+  group('Import Notion', () {
+    Map<String, Object?> page(
+      String id,
+      String title, {
+      Map<String, Object?> props = const {},
+    }) => {
+      'object': 'page',
+      'url': 'https://www.notion.so/$id',
+      'in_trash': false,
+      'properties': {
+        'Nom': {
+          'type': 'title',
+          'title': [
+            {'plain_text': title},
+          ],
+        },
+        ...props,
+      },
+    };
+
+    test('statut, case, date, priorité, négation', () {
+      const complete = {'opt-done'};
+      Map<String, Object?> status(String id, String name) => {
+        'type': 'status',
+        'status': {'id': id, 'name': name},
+      };
+      final done = NotionService.taskFrom(
+        page('a', 'Clôturer', props: {'Statut': status('opt-done', 'Livré')}),
+        complete,
+      )!;
+      expect(done.done, isTrue);
+      final doing = NotionService.taskFrom(
+        page('b', 'Rapport', props: {'Statut': status('x', 'En cours')}),
+        complete,
+      )!;
+      expect((doing.done, doing.doing), (false, true));
+      final notDone = NotionService.taskFrom(
+        page('c', 'Appel', props: {'Statut': status('y', 'Pas fait')}),
+        complete,
+      )!;
+      expect(notDone.done, isFalse);
+      final checked = NotionService.taskFrom(
+        page(
+          'd',
+          'Courrier',
+          props: {
+            'Fait': {'type': 'checkbox', 'checkbox': true},
+            'Urgent': {'type': 'checkbox', 'checkbox': false},
+          },
+        ),
+        complete,
+      )!;
+      expect(checked.done, isTrue);
+      final dated = NotionService.taskFrom(
+        page(
+          'e',
+          'Réunion CPAS',
+          props: {
+            'Échéance': {
+              'type': 'date',
+              'date': {'start': '2026-10-02'},
+            },
+            'Priorité': {
+              'type': 'select',
+              'select': {'name': 'Haute'},
+            },
+            'Notes': {
+              'type': 'rich_text',
+              'rich_text': [
+                {'plain_text': 'Salle 2'},
+              ],
+            },
+          },
+        ),
+        complete,
+      )!;
+      expect(dated.due, DateTime(2026, 10, 2, 9));
+      expect(dated.priority, ItemPriority.high);
+      expect(dated.note, 'Salle 2');
+      expect(
+        NotionService.parseDate('2026-10-02T14:30:00.000+00:00'),
+        DateTime.utc(2026, 10, 2, 14, 30).toLocal(),
+      );
+    });
+
+    test('import : pagination, terminées ignorées, sans doublon', () async {
+      final calls = <String>[];
+      final notion = NotionService(
+        () async => 'ntn_test',
+        client: MockClient((request) async {
+          calls.add('${request.method} ${request.url.path}');
+          if (request.method == 'GET') {
+            return http.Response.bytes(
+              utf8.encode(
+                jsonEncode({
+                  'properties': {
+                    'Statut': {
+                      'type': 'status',
+                      'status': {
+                        'groups': [
+                          {
+                            'name': 'Complete',
+                            'option_ids': ['opt-done'],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                }),
+              ),
+              200,
+            );
+          }
+          final cursor =
+              (jsonDecode(request.body) as Map)['start_cursor'] as String?;
+          final results = cursor == null
+              ? [
+                  page(
+                    '1',
+                    'Appeler Mme Dupont',
+                    props: {
+                      'Statut': {
+                        'type': 'status',
+                        'status': {'id': 'o1', 'name': 'En cours'},
+                      },
+                      'Date': {
+                        'type': 'date',
+                        'date': {'start': '2026-10-02T10:00:00.000+02:00'},
+                      },
+                    },
+                  ),
+                  page(
+                    '2',
+                    'Dossier clos',
+                    props: {
+                      'Statut': {
+                        'type': 'status',
+                        'status': {'id': 'opt-done', 'name': 'Archivé'},
+                      },
+                    },
+                  ),
+                ]
+              : [page('3', 'Déjà envoyé depuis Coffre')];
+          return http.Response.bytes(
+            utf8.encode(
+              jsonEncode({
+                'results': results,
+                'has_more': cursor == null,
+                'next_cursor': cursor == null ? 'c2' : null,
+              }),
+            ),
+            200,
+          );
+        }),
+      );
+      final db = AppDatabase(NativeDatabase.memory());
+      await db.createItem(
+        kind: ItemKind.note,
+        content: 'Déjà envoyé depuis Coffre',
+        notionUrl: 'https://www.notion.so/3',
+      );
+      const target = NotionTarget(id: 'ds1', name: 'Tâches', titleProp: 'Nom');
+
+      final first = await importNotionTasks(db, notion, target);
+      expect(calls, [
+        'GET /v1/data_sources/ds1',
+        'POST /v1/data_sources/ds1/query',
+        'POST /v1/data_sources/ds1/query',
+      ]);
+      expect((first.added.length, first.existing, first.done), (1, 1, 1));
+      final item = first.added.single;
+      expect(item.content, 'Appeler Mme Dupont');
+      expect(item.status, ItemStatus.doing);
+      expect(item.tags, ['notion']);
+      expect(item.inbox, isFalse);
+      expect(
+        item.remindAt!.isAtSameMomentAs(DateTime.utc(2026, 10, 2, 8)),
+        isTrue,
+      );
+      expect(item.notionUrl, 'https://www.notion.so/1');
+
+      final again = await importNotionTasks(db, notion, target);
+      expect((again.added.length, again.existing), (0, 2));
+      await db.close();
     });
   });
 }

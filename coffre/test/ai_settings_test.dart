@@ -59,7 +59,7 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('Réglages IA : Gemini par défaut, bascule vers Claude', (
+  testWidgets('Réglages : IA, agenda et Notion à jour sans quitter l\'écran', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1080, 2400);
@@ -114,6 +114,45 @@ void main() {
     expect(settings.aiProvider, AiProvider.claude);
     expect(find.text('Clé API Claude'), findsOneWidget);
     expect(find.text('Clé API Gemini'), findsNothing);
+
+    // Agenda et Notion suivent les réglages sans quitter l'écran.
+    await tester.runAsync(() async {
+      await settings.setAgendaEnabled(true);
+      await settings.setNotionTarget({
+        'id': 'ds1',
+        'name': 'Tâches SAFA',
+        'titleProp': 'Nom',
+      });
+    });
+    await settle(tester);
+    await tester.scrollUntilVisible(
+      find.text('Afficher mon agenda dans Jour'),
+      200,
+      scrollable: list,
+    );
+    await settle(tester);
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.widgetWithText(
+              SwitchListTile,
+              'Afficher mon agenda dans Jour',
+            ),
+          )
+          .value,
+      isTrue,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Importer depuis Notion'),
+      200,
+      scrollable: list,
+    );
+    await settle(tester);
+    expect(find.text('Tâches SAFA'), findsOneWidget);
+    expect(
+      find.text('Tâches non terminées de « Tâches SAFA »'),
+      findsOneWidget,
+    );
     await tester.runAsync(db.close);
   });
 }

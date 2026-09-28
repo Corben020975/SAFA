@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_services.dart';
 import '../../core/reminder_defaults.dart';
 import '../../data/app_settings.dart';
+import '../../services/notion_import.dart';
 import '../../services/notion_service.dart';
 import '../../services/secret_store.dart';
 import '../../services/system_channel.dart';
@@ -332,26 +333,29 @@ class AgendaSettingsSection extends StatelessWidget {
       }
     }
 
-    return Column(
-      children: [
-        SwitchListTile(
-          secondary: const Icon(Icons.event_outlined),
-          title: const Text('Afficher mon agenda dans Jour'),
-          subtitle: const Text('Rendez-vous d\'aujourd\'hui et de demain'),
-          value: settings.agendaEnabled,
-          onChanged: enable,
-        ),
-        ListTile(
-          leading: const Icon(Icons.edit_calendar_outlined),
-          title: const Text('Agenda pour « Ajouter à l\'agenda »'),
-          subtitle: Text(settings.agendaCalendarName ?? 'À choisir'),
-          onTap: choose,
-        ),
-        const _Note(
-          'Coffre lit et écrit dans l\'agenda du téléphone, déjà synchronisé avec ton compte Google : '
-          'aucune connexion Google dans l\'app.',
-        ),
-      ],
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) => Column(
+        children: [
+          SwitchListTile(
+            secondary: const Icon(Icons.event_outlined),
+            title: const Text('Afficher mon agenda dans Jour'),
+            subtitle: const Text('Rendez-vous d\'aujourd\'hui et de demain'),
+            value: settings.agendaEnabled,
+            onChanged: enable,
+          ),
+          ListTile(
+            leading: const Icon(Icons.edit_calendar_outlined),
+            title: const Text('Agenda pour « Ajouter à l\'agenda »'),
+            subtitle: Text(settings.agendaCalendarName ?? 'À choisir'),
+            onTap: choose,
+          ),
+          const _Note(
+            'Coffre lit et écrit dans l\'agenda du téléphone, déjà synchronisé avec ton compte Google : '
+            'aucune connexion Google dans l\'app.',
+          ),
+        ],
+      ),
     );
   }
 }
@@ -367,6 +371,7 @@ class _NotionSettingsSectionState extends State<NotionSettingsSection> {
   late final AppServices _s = AppScope.of(context);
   bool? _hasToken;
   bool _loading = false;
+  bool _importing = false;
   bool _started = false;
 
   @override
@@ -435,38 +440,93 @@ class _NotionSettingsSectionState extends State<NotionSettingsSection> {
     if (chosen != null) await _s.settings.setNotionTarget(chosen.toMap());
   }
 
+  Future<void> _import(NotionTarget target) async {
+    setState(() => _importing = true);
+    try {
+      final result = await importNotionTasks(_s.db, _s.notion, target);
+      for (final item in result.added) {
+        await _s.notifications.schedule(item);
+      }
+      final n = result.added.length;
+      final details = [
+        if (result.existing > 0) '${result.existing} déjà dans Coffre',
+        if (result.done > 0)
+          '${result.done} terminée${result.done > 1 ? 's' : ''} ignorée${result.done > 1 ? 's' : ''}',
+      ];
+      if (mounted) {
+        _snack(
+          context,
+          '${n == 0 ? 'Aucune nouvelle tâche' : '$n tâche${n > 1 ? 's' : ''} importée${n > 1 ? 's' : ''} (#notion)'}'
+          '${details.isEmpty ? '' : ' · ${details.join(' · ')}'}',
+        );
+      }
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _importing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final target = NotionTarget.fromMap(_s.settings.notionTarget);
-    return Column(
-      children: [
-        ListTile(
-          leading: const Icon(Icons.vpn_key_outlined),
-          title: const Text('Jeton d\'intégration'),
-          subtitle: Text(
-            _hasToken == null ? '…' : (_hasToken! ? 'Configuré' : 'À ajouter'),
-          ),
-          onTap: _editToken,
-        ),
-        ListTile(
-          enabled: _hasToken == true,
-          leading: const Icon(Icons.table_chart_outlined),
-          title: const Text('Base de destination'),
-          subtitle: Text(target?.name ?? 'À choisir'),
-          trailing: _loading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : null,
-          onTap: _hasToken == true ? _chooseTarget : null,
-        ),
-        const _Note(
-          '« Envoyer vers Notion » sur un élément crée une page (titre, date du rappel, texte). '
-          'La recherche du Flux peut aussi chercher dans Notion.',
-        ),
-      ],
+    return ListenableBuilder(
+      listenable: _s.settings,
+      builder: (context, _) {
+        final target = NotionTarget.fromMap(_s.settings.notionTarget);
+        return Column(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.vpn_key_outlined),
+              title: const Text('Jeton d\'intégration'),
+              subtitle: Text(
+                _hasToken == null
+                    ? '…'
+                    : (_hasToken! ? 'Configuré' : 'À ajouter'),
+              ),
+              onTap: _editToken,
+            ),
+            ListTile(
+              enabled: _hasToken == true,
+              leading: const Icon(Icons.table_chart_outlined),
+              title: const Text('Base de destination'),
+              subtitle: Text(target?.name ?? 'À choisir'),
+              trailing: _loading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : null,
+              onTap: _hasToken == true ? _chooseTarget : null,
+            ),
+            ListTile(
+              enabled: _hasToken == true && target != null && !_importing,
+              leading: const Icon(Icons.download_outlined),
+              title: const Text('Importer depuis Notion'),
+              subtitle: Text(
+                target == null
+                    ? 'Choisis d\'abord la base'
+                    : 'Tâches non terminées de « ${target.name} »',
+              ),
+              trailing: _importing
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : null,
+              onTap: _hasToken == true && target != null
+                  ? () => _import(target)
+                  : null,
+            ),
+            const _Note(
+              '« Envoyer vers Notion » sur un élément crée une page (titre, date du rappel, texte). '
+              '« Importer » ajoute les tâches non terminées de la base, avec le tag #notion : '
+              'relancer l\'import n\'ajoute que les nouvelles, sans doublon.',
+            ),
+          ],
+        );
+      },
     );
   }
 }
