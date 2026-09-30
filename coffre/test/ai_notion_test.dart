@@ -510,7 +510,7 @@ void main() {
       expect(item.content, 'Appeler Mme Dupont');
       expect(item.status, ItemStatus.doing);
       expect(item.tags, ['notion']);
-      expect(item.inbox, isFalse);
+      expect(item.inbox, isTrue);
       expect(
         item.remindAt!.isAtSameMomentAs(DateTime.utc(2026, 10, 2, 8)),
         isTrue,
@@ -520,6 +520,230 @@ void main() {
       final again = await importNotionTasks(db, notion, target);
       expect((again.added.length, again.existing), (0, 2));
       await db.close();
+    });
+
+    test(
+      'Todos pro (Grokbot) : P1/P2, Contexte, Bloqué, contenu, fermeture',
+      () async {
+        Map<String, Object?> todo(
+          String id,
+          String title,
+          String statut, {
+          String priorite = 'P2',
+          String contexte = 'Réunion',
+          String? echeance,
+        }) => {
+          'object': 'page',
+          'id': id,
+          'url': 'https://www.notion.so/$title-$id'.replaceAll(' ', '-'),
+          'properties': {
+            'Tâche': {
+              'type': 'title',
+              'title': [
+                {'plain_text': title},
+              ],
+            },
+            'Statut': {
+              'type': 'select',
+              'select': {'name': statut},
+            },
+            'Priorité': {
+              'type': 'select',
+              'select': {'name': priorite},
+            },
+            'Contexte': {
+              'type': 'select',
+              'select': {'name': contexte},
+            },
+            'Notes': {
+              'type': 'rich_text',
+              'rich_text': [
+                {'plain_text': 'Transports TSA, restructuration SAFA'},
+              ],
+            },
+            'Échéance': {
+              'type': 'date',
+              'date': echeance == null ? null : {'start': echeance},
+            },
+            'Récurrente': {'type': 'checkbox', 'checkbox': true},
+          },
+        };
+        const a = '3ea7e7c722f38036b9aacc43b7e9b135';
+        const b = '3e37e7c722f3811a8407cfab08201814';
+        const c = '3e17e7c722f381c3bc0df19009ebd81d';
+        var closedInNotion = false;
+        final notion = NotionService(
+          () async => 'ntn_test',
+          client: MockClient((request) async {
+            final path = request.url.path;
+            Object body;
+            if (path.endsWith('/query')) {
+              body = {
+                'results': [
+                  todo(
+                    a,
+                    'Réunion DG 29-09',
+                    'À faire',
+                    echeance: '2026-10-06',
+                  ),
+                  todo(
+                    b,
+                    'Suite réunion DG',
+                    'Bloqué',
+                    priorite: 'P1',
+                    contexte: 'Suivi',
+                  ),
+                  todo(
+                    c,
+                    'Boîtes jaunes',
+                    closedInNotion ? 'Fait' : 'En cours',
+                  ),
+                ],
+                'has_more': false,
+              };
+            } else if (path.contains('/blocks/')) {
+              body = {
+                'results': [
+                  {
+                    'type': 'heading_2',
+                    'heading_2': {
+                      'rich_text': [
+                        {'plain_text': 'Sujets'},
+                      ],
+                    },
+                  },
+                  {
+                    'type': 'bulleted_list_item',
+                    'bulleted_list_item': {
+                      'rich_text': [
+                        {'plain_text': 'Subvention APE'},
+                      ],
+                    },
+                  },
+                ],
+              };
+            } else {
+              body = {'properties': {}};
+            }
+            return http.Response.bytes(utf8.encode(jsonEncode(body)), 200);
+          }),
+        );
+        final db = AppDatabase(NativeDatabase.memory());
+        const target = NotionTarget(
+          id: 'ds',
+          name: 'Todos pro',
+          titleProp: 'Tâche',
+          dateProp: 'Échéance',
+        );
+
+        final first = await importNotionTasks(
+          db,
+          notion,
+          target,
+          context: 'Travail',
+        );
+        expect(first.added.length, 3); // « Récurrente » cochée ≠ terminée
+        final dg = first.added.firstWhere(
+          (i) => i.content.startsWith('Réunion DG'),
+        );
+        expect(
+          dg.content,
+          'Réunion DG 29-09\nTransports TSA, restructuration SAFA\nSujets\n- Subvention APE',
+        );
+        expect(dg.priority, ItemPriority.normal);
+        expect(dg.tags, ['notion', 'réunion']);
+        expect(dg.context, 'Travail');
+        expect(dg.inbox, isTrue);
+        expect(dg.remindAt, DateTime(2026, 10, 6, 9));
+        final suite = first.added.firstWhere(
+          (i) => i.content.startsWith('Suite'),
+        );
+        expect(suite.priority, ItemPriority.high);
+        expect(suite.tags, ['notion', 'bloqué', 'suivi']);
+        expect(first.added.last.status, ItemStatus.doing);
+
+        // Passée à « Fait » dans Notion → fermée dans Coffre.
+        closedInNotion = true;
+        final second = await importNotionTasks(db, notion, target);
+        expect(second.added, isEmpty);
+        expect(second.closed.single.content, startsWith('Boîtes jaunes'));
+        expect(second.closed.single.status, ItemStatus.done);
+        await db.close();
+      },
+    );
+
+    test('Coffre → Notion : quelle propriété passer à « Fait »', () {
+      expect(
+        NotionService.pageIdFromUrl(
+          'https://www.notion.so/Cafe-3ea7e7c722f38036b9aacc43b7e9b135?pvs=4',
+        ),
+        '3ea7e7c722f38036b9aacc43b7e9b135',
+      );
+      // Liste « Statut » (Todos pro).
+      expect(
+        NotionService.doneUpdate(
+          {
+            'Priorité': {'type': 'select'},
+            'Statut': {'type': 'select'},
+            'Récurrente': {'type': 'checkbox'},
+          },
+          {
+            'properties': {
+              'Statut': {
+                'select': {
+                  'options': [
+                    {'name': 'À faire'},
+                    {'name': 'Bloqué'},
+                    {'name': 'Fait'},
+                  ],
+                },
+              },
+            },
+          },
+        ),
+        {
+          'Statut': {
+            'select': {'name': 'Fait'},
+          },
+        },
+      );
+      // Propriété « statut » native : groupe Complete.
+      expect(
+        NotionService.doneUpdate(
+          {
+            'État': {'type': 'status'},
+          },
+          {
+            'properties': {
+              'État': {
+                'status': {
+                  'options': [
+                    {'id': 'a', 'name': 'Pas commencée'},
+                    {'id': 'b', 'name': 'Livré'},
+                  ],
+                  'groups': [
+                    {
+                      'name': 'Complete',
+                      'option_ids': ['b'],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        ),
+        {
+          'État': {
+            'status': {'name': 'Livré'},
+          },
+        },
+      );
+      expect(
+        NotionService.doneUpdate({
+          'Nom': {'type': 'title'},
+        }, const {}),
+        isNull,
+      );
     });
   });
 }

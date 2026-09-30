@@ -282,6 +282,12 @@ class AppDatabase extends _$AppDatabase {
   Future<void> restoreItem(Item item) =>
       into(items).insert(item, mode: InsertMode.insertOrReplace);
 
+  Future<Item?> itemByNotionUrl(String url) =>
+      (select(items)
+            ..where((t) => t.notionUrl.equals(url))
+            ..limit(1))
+          .getSingleOrNull();
+
   /// Liens Notion déjà connus (envoyés ou importés) : pas de doublon.
   Future<Set<String>> notionUrls() async {
     final query = selectOnly(items)

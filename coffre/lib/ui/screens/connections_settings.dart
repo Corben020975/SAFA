@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_services.dart';
 import '../../core/reminder_defaults.dart';
 import '../../data/app_settings.dart';
+import '../../data/enums.dart';
 import '../../services/notion_import.dart';
 import '../../services/notion_service.dart';
 import '../../services/secret_store.dart';
@@ -403,22 +404,23 @@ class _NotionSettingsSectionState extends State<NotionSettingsSection> {
     await _refresh();
   }
 
-  Future<void> _chooseTarget() async {
+  /// Liste des bases partagées avec l'intégration ; null si annulé.
+  Future<NotionTarget?> _pickBase(String title) async {
     setState(() => _loading = true);
     List<NotionTarget> targets;
     try {
       targets = await _s.notion.listTargets();
     } catch (e) {
       if (mounted) _snack(context, '$e');
-      return;
+      return null;
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-    if (!mounted) return;
-    final chosen = await showDialog<NotionTarget>(
+    if (!mounted) return null;
+    return showDialog<NotionTarget>(
       context: context,
       builder: (d) => SimpleDialog(
-        title: const Text('Base Notion de destination'),
+        title: Text(title),
         children: [
           if (targets.isEmpty)
             const Padding(
@@ -437,26 +439,63 @@ class _NotionSettingsSectionState extends State<NotionSettingsSection> {
         ],
       ),
     );
+  }
+
+  Future<void> _chooseTarget() async {
+    final chosen = await _pickBase('Base où envoyer');
     if (chosen != null) await _s.settings.setNotionTarget(chosen.toMap());
+  }
+
+  Future<void> _chooseImport() async {
+    final chosen = await _pickBase('Base à importer (Grokbot…)');
+    if (chosen == null || !mounted) return;
+    const none = '—';
+    final context_ = await showDialog<String>(
+      context: context,
+      builder: (d) => SimpleDialog(
+        title: const Text('Contexte des tâches importées'),
+        children: [
+          for (final c in [...kContexts, none])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(d, c),
+              child: Text(c == none ? 'Aucun' : c),
+            ),
+        ],
+      ),
+    );
+    if (context_ == null) return;
+    await _s.settings.setNotionImport(
+      chosen.toMap(),
+      context_ == none ? null : context_,
+    );
+    await _import(chosen);
   }
 
   Future<void> _import(NotionTarget target) async {
     setState(() => _importing = true);
     try {
-      final result = await importNotionTasks(_s.db, _s.notion, target);
-      for (final item in result.added) {
+      final result = await importNotionTasks(
+        _s.db,
+        _s.notion,
+        target,
+        context: _s.settings.notionImportContext,
+      );
+      for (final item in [...result.added, ...result.closed]) {
         await _s.notifications.schedule(item);
       }
+      String plural(int n, String word) => '$n $word${n > 1 ? 's' : ''}';
       final n = result.added.length;
       final details = [
         if (result.existing > 0) '${result.existing} déjà dans Coffre',
+        if (result.closed.isNotEmpty)
+          '${plural(result.closed.length, 'fermée')} (Fait dans Notion)',
         if (result.done > 0)
-          '${result.done} terminée${result.done > 1 ? 's' : ''} ignorée${result.done > 1 ? 's' : ''}',
+          '${plural(result.done, 'terminée')} ignorée${result.done > 1 ? 's' : ''}',
       ];
       if (mounted) {
         _snack(
           context,
-          '${n == 0 ? 'Aucune nouvelle tâche' : '$n tâche${n > 1 ? 's' : ''} importée${n > 1 ? 's' : ''} (#notion)'}'
+          '${n == 0 ? 'Aucune nouvelle tâche' : '${plural(n, 'tâche')} importée${n > 1 ? 's' : ''} dans l\'Inbox'}'
           '${details.isEmpty ? '' : ' · ${details.join(' · ')}'}',
         );
       }
@@ -469,60 +508,80 @@ class _NotionSettingsSectionState extends State<NotionSettingsSection> {
 
   @override
   Widget build(BuildContext context) {
+    final settings = _s.settings;
+    Widget spinner(bool on) => on
+        ? const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : const SizedBox.shrink();
     return ListenableBuilder(
-      listenable: _s.settings,
+      listenable: settings,
       builder: (context, _) {
-        final target = NotionTarget.fromMap(_s.settings.notionTarget);
+        final ready = _hasToken == true;
+        final target = NotionTarget.fromMap(settings.notionTarget);
+        final source = NotionTarget.fromMap(settings.notionImport);
         return Column(
           children: [
             ListTile(
               leading: const Icon(Icons.vpn_key_outlined),
               title: const Text('Jeton d\'intégration'),
               subtitle: Text(
-                _hasToken == null
-                    ? '…'
-                    : (_hasToken! ? 'Configuré' : 'À ajouter'),
+                _hasToken == null ? '…' : (ready ? 'Configuré' : 'À ajouter'),
               ),
               onTap: _editToken,
             ),
             ListTile(
-              enabled: _hasToken == true,
-              leading: const Icon(Icons.table_chart_outlined),
-              title: const Text('Base de destination'),
+              enabled: ready,
+              leading: const Icon(Icons.upload_outlined),
+              title: const Text('Base où envoyer'),
               subtitle: Text(target?.name ?? 'À choisir'),
-              trailing: _loading
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : null,
-              onTap: _hasToken == true ? _chooseTarget : null,
+              trailing: spinner(_loading),
+              onTap: ready ? _chooseTarget : null,
             ),
             ListTile(
-              enabled: _hasToken == true && target != null && !_importing,
+              enabled: ready,
               leading: const Icon(Icons.download_outlined),
-              title: const Text('Importer depuis Notion'),
+              title: const Text('Base à importer (Grokbot…)'),
               subtitle: Text(
-                target == null
-                    ? 'Choisis d\'abord la base'
-                    : 'Tâches non terminées de « ${target.name} »',
+                source == null
+                    ? 'À choisir'
+                    : '${source.name}${settings.notionImportContext == null ? '' : ' → ${settings.notionImportContext}'}',
               ),
-              trailing: _importing
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : null,
-              onTap: _hasToken == true && target != null
-                  ? () => _import(target)
+              onTap: ready ? _chooseImport : null,
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.sync),
+              title: const Text('Importer à chaque ouverture'),
+              subtitle: const Text(
+                'Les nouvelles tâches arrivent dans l\'Inbox',
+              ),
+              value: settings.notionAutoImport,
+              onChanged: ready && source != null
+                  ? settings.setNotionAutoImport
                   : null,
             ),
+            ListTile(
+              enabled: ready && source != null && !_importing,
+              leading: const Icon(Icons.refresh),
+              title: const Text('Importer maintenant'),
+              trailing: spinner(_importing),
+              onTap: ready && source != null ? () => _import(source) : null,
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.task_alt),
+              title: const Text('« Fait » dans Coffre → Fait dans Notion'),
+              subtitle: const Text(
+                'Pour les éléments venus de Notion ou envoyés vers Notion',
+              ),
+              value: settings.notionSyncDone,
+              onChanged: ready ? settings.setNotionSyncDone : null,
+            ),
             const _Note(
-              '« Envoyer vers Notion » sur un élément crée une page (titre, date du rappel, texte). '
-              '« Importer » ajoute les tâches non terminées de la base, avec le tag #notion : '
-              'relancer l\'import n\'ajoute que les nouvelles, sans doublon.',
+              'Import : titre, notes et contenu de la page, échéance → rappel, P1/P2/P3 → priorité, '
+              'listes (Contexte, Domaine…) → tags, statuts Bloqué / Délégué → tags. '
+              'Une tâche passée à « Fait » dans Notion se ferme aussi dans Coffre.',
             ),
           ],
         );

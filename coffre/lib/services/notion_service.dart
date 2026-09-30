@@ -50,6 +50,7 @@ class NotionTarget {
 /// Tâche lue dans une base Notion.
 class NotionTask {
   const NotionTask({
+    this.id,
     required this.url,
     required this.title,
     this.note,
@@ -57,7 +58,9 @@ class NotionTask {
     this.done = false,
     this.doing = false,
     this.priority = ItemPriority.normal,
+    this.tags = const [],
   });
+  final String? id;
   final String url;
   final String title;
   final String? note;
@@ -65,6 +68,10 @@ class NotionTask {
   final bool done;
   final bool doing;
   final ItemPriority priority;
+
+  /// Valeurs des listes (Contexte, Domaine…) et statuts particuliers
+  /// (Bloqué, Délégué…), en minuscules.
+  final List<String> tags;
 }
 
 class NotionHit {
@@ -180,6 +187,17 @@ class NotionService {
 
   /// Ligne Notion → tâche Coffre. Statut, case à cocher, date et priorité
   /// sont reconnus par leur type et leur nom (français ou anglais).
+  static final _statusName = RegExp(
+    r'statut|status|[ée]tat',
+    caseSensitive: false,
+  );
+  static final _todoName = RegExp(
+    r'faire|to ?do|pas commenc|not started|nouveau|new|backlog',
+    caseSensitive: false,
+  );
+
+  /// Ligne Notion → tâche Coffre. Statut, case à cocher, date, priorité et
+  /// listes sont reconnus par leur type et leur nom (français ou anglais).
   static NotionTask? taskFrom(
     Map page,
     Set<String> completeIds, {
@@ -190,54 +208,73 @@ class NotionService {
     if (url is! String || title == null) return null;
     final props = (page['properties'] as Map? ?? const {})
         .cast<Object?, Object?>();
-    final checkboxes = props.values
-        .whereType<Map>()
-        .where((v) => v['type'] == 'checkbox')
-        .length;
     var done = false, doing = false;
     var priority = ItemPriority.normal;
     DateTime? due;
     String? note;
+    final tags = <String>[];
+
+    void status(String label, {bool complete = false}) {
+      if (complete || _isDone(label)) {
+        done = true;
+      } else if (_doingName.hasMatch(label)) {
+        doing = true;
+      } else if (label.trim().isNotEmpty && !_todoName.hasMatch(label)) {
+        tags.add(label.trim().toLowerCase()); // Bloqué, Délégué, Reporté…
+      }
+    }
+
     props.forEach((key, value) {
       if (value is! Map) return;
       final name = '$key';
+      final isPriority = name.toLowerCase().contains('priorit');
       switch (value['type']) {
         case 'status':
-          final status = value['status'] as Map?;
-          final label = '${status?['name'] ?? ''}';
-          if (completeIds.contains(status?['id']) || _isDone(label)) {
-            done = true;
-          } else if (_doingName.hasMatch(label)) {
-            doing = true;
-          }
-          if (name.toLowerCase().contains('priorit')) {
+          final s = value['status'] as Map?;
+          final label = '${s?['name'] ?? ''}';
+          if (isPriority) {
             priority = _priority(label);
+          } else {
+            status(label, complete: completeIds.contains(s?['id']));
           }
         case 'checkbox':
-          if (value['checkbox'] == true &&
-              (checkboxes == 1 || _doneCheckbox.hasMatch(name))) {
+          // Seulement une case nommée « Fait », « Terminé »… (pas « Récurrente »).
+          if (value['checkbox'] == true && _doneCheckbox.hasMatch(name)) {
             done = true;
           }
         case 'select':
           final label = '${(value['select'] as Map?)?['name'] ?? ''}';
-          if (name.toLowerCase().contains('priorit')) {
+          if (label.isEmpty) break;
+          if (isPriority) {
             priority = _priority(label);
-          } else if (RegExp(
-            r'statut|status|[ée]tat',
-            caseSensitive: false,
-          ).hasMatch(name)) {
-            if (_isDone(label)) done = true;
-            if (_doingName.hasMatch(label)) doing = true;
+          } else if (_statusName.hasMatch(name)) {
+            status(label);
+          } else {
+            tags.add(label.toLowerCase());
+          }
+        case 'multi_select':
+          for (final option
+              in (value['multi_select'] as List? ?? const [])
+                  .whereType<Map>()) {
+            final label = '${option['name'] ?? ''}'.trim();
+            if (label.isNotEmpty) tags.add(label.toLowerCase());
           }
         case 'date':
           if (dateProp == null || dateProp == name) {
             due ??= parseDate((value['date'] as Map?)?['start'] as String?);
           }
         case 'rich_text':
-          if (_noteName.hasMatch(name)) note ??= plainText(value['rich_text']);
+          final text = plainText(value['rich_text']);
+          if (text == null) break;
+          if (isPriority) {
+            priority = _priority(text);
+          } else if (_noteName.hasMatch(name)) {
+            note ??= text;
+          }
       }
     });
     return NotionTask(
+      id: page['id'] as String?,
       url: url,
       title: title,
       note: note,
@@ -245,11 +282,126 @@ class NotionService {
       done: done,
       doing: doing,
       priority: priority,
+      tags: tags.toSet().toList(),
     );
   }
 
+  /// Texte de la page (paragraphes, titres, listes, cases), 100 blocs max.
+  Future<String?> pageText(String pageId) async {
+    final json = await _call('GET', 'blocks/$pageId/children?page_size=100');
+    return blocksText(json['results'] as List? ?? const []);
+  }
+
+  static String? blocksText(List blocks) {
+    final lines = <String>[];
+    for (final block in blocks.whereType<Map>()) {
+      final type = block['type'] as String?;
+      final data = block[type] as Map?;
+      final text = plainText(data?['rich_text']);
+      if (text == null) continue;
+      lines.add(switch (type) {
+        'bulleted_list_item' => '- $text',
+        'numbered_list_item' => '- $text',
+        'to_do' => '${data?['checked'] == true ? '☑' : '☐'} $text',
+        _ => text,
+      });
+    }
+    return lines.isEmpty ? null : lines.join('\n');
+  }
+
+  /// Coffre → Notion : passe la page à « Fait » (statut, liste ou case).
+  /// Renvoie false si la base n'a rien d'équivalent.
+  Future<bool> markDone(String pageUrl) async {
+    final id = pageIdFromUrl(pageUrl);
+    if (id == null) return false;
+    final page = await _call('GET', 'pages/$id');
+    final dataSource = (page['parent'] as Map?)?['data_source_id'] as String?;
+    final schema = dataSource == null
+        ? const <String, dynamic>{}
+        : await _call('GET', 'data_sources/$dataSource');
+    final update = doneUpdate(page['properties'] as Map? ?? const {}, schema);
+    if (update == null) return false;
+    await _call('PATCH', 'pages/$id', {'properties': update});
+    return true;
+  }
+
+  static String? pageIdFromUrl(String url) {
+    // « …/Titre-de-la-page-3ea7e7c722f3… » : l'identifiant termine le chemin.
+    final path = (Uri.tryParse(url)?.path ?? '').replaceAll('-', '');
+    return RegExp(r'[0-9a-f]{32}$').firstMatch(path)?.group(0);
+  }
+
+  /// Propriété à modifier pour clore la page, d'après le schéma de la base.
+  static Map<String, Object?>? doneUpdate(Map pageProps, Map schema) {
+    final schemaProps = schema['properties'] as Map? ?? const {};
+    for (final entry in pageProps.entries) {
+      final name = '${entry.key}';
+      final value = entry.value;
+      if (value is! Map || name.toLowerCase().contains('priorit')) continue;
+      final config = schemaProps[name] as Map?;
+      switch (value['type']) {
+        case 'status':
+          final status = config?['status'] as Map?;
+          final options = (status?['options'] as List? ?? const [])
+              .whereType<Map>()
+              .toList();
+          String? target;
+          for (final group
+              in (status?['groups'] as List? ?? const []).whereType<Map>()) {
+            if (!_completeGroup.hasMatch('${group['name']}')) continue;
+            final ids = (group['option_ids'] as List? ?? const []).toSet();
+            target = options
+                .where((o) => ids.contains(o['id']))
+                .map((o) => '${o['name']}')
+                .firstOrNull;
+            if (target != null) break;
+          }
+          target ??= options
+              .map((o) => '${o['name']}')
+              .where(_isDone)
+              .firstOrNull;
+          if (target != null) {
+            return {
+              name: {
+                'status': {'name': target},
+              },
+            };
+          }
+        case 'select' when _statusName.hasMatch(name):
+          final target =
+              ((config?['select'] as Map?)?['options'] as List? ?? const [])
+                  .whereType<Map>()
+                  .map((o) => '${o['name']}')
+                  .where(_isDone)
+                  .firstOrNull;
+          if (target != null) {
+            return {
+              name: {
+                'select': {'name': target},
+              },
+            };
+          }
+        case 'checkbox' when _doneCheckbox.hasMatch(name):
+          return {
+            name: {'checkbox': true},
+          };
+      }
+    }
+    return null;
+  }
+
   static ItemPriority _priority(String label) {
-    final l = label.toLowerCase();
+    final l = label.toLowerCase().trim();
+    // P1 / P2 / P3 (P0 = urgent).
+    final p = RegExp(r'^p\s*([0-3])\b').firstMatch(l);
+    if (p != null) {
+      return const [
+        ItemPriority.urgent,
+        ItemPriority.high,
+        ItemPriority.normal,
+        ItemPriority.low,
+      ][int.parse(p.group(1)!)];
+    }
     if (l.contains('urgent')) return ItemPriority.urgent;
     if (RegExp(r'haut|high|[ée]lev|important').hasMatch(l)) {
       return ItemPriority.high;
@@ -360,15 +512,19 @@ class NotionService {
     };
     final http.Response response;
     try {
-      response =
-          await (method == 'GET'
-                  ? _client.get(uri, headers: headers)
-                  : _client.post(
-                      uri,
-                      headers: headers,
-                      body: jsonEncode(body ?? const {}),
-                    ))
-              .timeout(const Duration(seconds: 30));
+      response = await switch (method) {
+        'GET' => _client.get(uri, headers: headers),
+        'PATCH' => _client.patch(
+          uri,
+          headers: headers,
+          body: jsonEncode(body ?? const {}),
+        ),
+        _ => _client.post(
+          uri,
+          headers: headers,
+          body: jsonEncode(body ?? const {}),
+        ),
+      }.timeout(const Duration(seconds: 30));
     } on TimeoutException {
       throw const NotionException('Notion ne répond pas. Réessaie.');
     } on SocketException {

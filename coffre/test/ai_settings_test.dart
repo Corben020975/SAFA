@@ -143,16 +143,13 @@ void main() {
       isTrue,
     );
     await tester.scrollUntilVisible(
-      find.text('Importer depuis Notion'),
+      find.text('Importer maintenant'),
       200,
       scrollable: list,
     );
     await settle(tester);
     expect(find.text('Tâches SAFA'), findsOneWidget);
-    expect(
-      find.text('Tâches non terminées de « Tâches SAFA »'),
-      findsOneWidget,
-    );
+
     await tester.runAsync(db.close);
   });
 }

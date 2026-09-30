@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
@@ -6,6 +8,7 @@ import '../core/date_labels.dart';
 import '../data/database.dart';
 import '../data/enums.dart';
 import '../services/day_board.dart';
+import '../services/notion_import.dart';
 import 'theme.dart';
 import 'widgets/reminder_field.dart';
 
@@ -26,6 +29,16 @@ class ItemActions {
     // Élément répété : il revient à sa prochaine date au lieu de se clore.
     final repeated =
         !wasDone && updated != null && updated.status != ItemStatus.done;
+    if (!wasDone && !repeated && item.notionUrl != null) {
+      // Après le délai d'annulation : la page Notion passe aussi à « Fait ».
+      unawaited(
+        pushDoneToNotion(
+          s,
+          item.id,
+          delay: kUndoDuration + const Duration(seconds: 1),
+        ),
+      );
+    }
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(

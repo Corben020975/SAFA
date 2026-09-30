@@ -8,6 +8,7 @@ import '../../core/date_labels.dart';
 import '../../data/database.dart';
 import '../../data/enums.dart';
 import '../../services/notification_service.dart';
+import '../../services/notion_import.dart';
 import '../../services/notion_service.dart';
 import '../theme.dart';
 import '../widgets/ai_sheet.dart';
@@ -117,6 +118,9 @@ class _DetailScreenState extends State<DetailScreen> {
       item.copyWith(status: done ? ItemStatus.todo : ItemStatus.done),
       reschedule: true,
     );
+    if (!done && _item!.status == ItemStatus.done && item.notionUrl != null) {
+      unawaited(pushDoneToNotion(_s, item.id));
+    }
     if (!done && mounted) {
       final messenger = ScaffoldMessenger.of(context);
       final next = _item!;

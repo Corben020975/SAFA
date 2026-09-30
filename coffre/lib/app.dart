@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/app_services.dart';
 import 'services/launch_router.dart';
+import 'services/notion_import.dart';
 import 'ui/screens/capture_screen.dart';
 import 'ui/screens/detail_screen.dart';
 import 'ui/screens/home_shell.dart';
@@ -23,6 +24,8 @@ class CoffreApp extends StatefulWidget {
 
 class _CoffreAppState extends State<CoffreApp> {
   late final AppLifecycleListener _lifecycle;
+  late final NotionAutoImport _notionImport = NotionAutoImport(widget.services);
+  final _messenger = GlobalKey<ScaffoldMessengerState>();
   late final String _initialRoute = widget.services.settings.onboardingDone
       ? '/'
       : '/onboarding';
@@ -39,10 +42,28 @@ class _CoffreAppState extends State<CoffreApp> {
         widget.services.db.notifyUpdates({
           TableUpdate.onTable(widget.services.db.items),
         });
+        _importFromNotion();
       },
     );
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => widget.router.handleColdStart(),
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.router.handleColdStart();
+      _importFromNotion();
+    });
+  }
+
+  /// Nouvelles entrées de la base Notion (Grokbot…) à chaque ouverture.
+  Future<void> _importFromNotion() async {
+    final result = await _notionImport.run();
+    final n = result?.added.length ?? 0;
+    if (n == 0) return;
+    _messenger.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(
+          n == 1
+              ? '1 nouvelle tâche depuis Notion (Inbox)'
+              : '$n nouvelles tâches depuis Notion (Inbox)',
+        ),
+      ),
     );
   }
 
@@ -83,6 +104,7 @@ class _CoffreAppState extends State<CoffreApp> {
           title: 'Coffre',
           debugShowCheckedModeBanner: false,
           navigatorKey: widget.router.navigatorKey,
+          scaffoldMessengerKey: _messenger,
           theme: buildTheme(Brightness.light),
           darkTheme: buildTheme(Brightness.dark),
           themeMode: settings.themeMode,

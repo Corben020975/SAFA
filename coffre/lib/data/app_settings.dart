@@ -43,6 +43,14 @@ class AppSettings extends ChangeNotifier {
   /// Base Notion de destination : {id, name, titleProp, dateProp}.
   Map<String, String>? notionTarget;
 
+  /// Base Notion lue par l'import (Grokbot…), même format.
+  Map<String, String>? notionImport;
+  String? notionImportContext;
+  bool notionAutoImport = true;
+
+  /// « Fait » dans Coffre → « Fait » dans Notion.
+  bool notionSyncDone = true;
+
   Future<void> load() async {
     final p = await _db.allPrefs();
     themeMode = ThemeMode.values.asNameMap()[p['theme']] ?? ThemeMode.dark;
@@ -72,6 +80,18 @@ class AppSettings extends ChangeNotifier {
     } catch (_) {
       notionTarget = null;
     }
+    try {
+      final raw = p['notionImport'];
+      notionImport = raw == null
+          ? null
+          : Map<String, String>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      notionImport = null;
+    }
+    final importContext = p['notionImportContext'];
+    notionImportContext = (importContext ?? '').isEmpty ? null : importContext;
+    notionAutoImport = p['notionAutoImport'] != 'false';
+    notionSyncDone = p['notionSyncDone'] != 'false';
     _applyDefaults();
   }
 
@@ -134,6 +154,24 @@ class AppSettings extends ChangeNotifier {
     'notionTarget',
     target == null ? '' : jsonEncode(target),
   );
+
+  Future<void> setNotionImport(
+    Map<String, String>? target,
+    String? context,
+  ) async {
+    notionImportContext = context;
+    await _db.setPref('notionImportContext', context ?? '');
+    await _set(
+      () => notionImport = target,
+      'notionImport',
+      target == null ? '' : jsonEncode(target),
+    );
+  }
+
+  Future<void> setNotionAutoImport(bool value) =>
+      _set(() => notionAutoImport = value, 'notionAutoImport', '$value');
+  Future<void> setNotionSyncDone(bool value) =>
+      _set(() => notionSyncDone = value, 'notionSyncDone', '$value');
 
   Future<void> setThemeMode(ThemeMode value) =>
       _set(() => themeMode = value, 'theme', value.name);
