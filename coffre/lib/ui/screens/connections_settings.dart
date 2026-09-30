@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/app_services.dart';
 import '../../core/reminder_defaults.dart';
 import '../../data/app_settings.dart';
-import '../../data/enums.dart';
 import '../../services/notion_import.dart';
 import '../../services/notion_service.dart';
 import '../../services/secret_store.dart';
@@ -448,26 +447,8 @@ class _NotionSettingsSectionState extends State<NotionSettingsSection> {
 
   Future<void> _chooseImport() async {
     final chosen = await _pickBase('Base à importer (Grokbot…)');
-    if (chosen == null || !mounted) return;
-    const none = '—';
-    final context_ = await showDialog<String>(
-      context: context,
-      builder: (d) => SimpleDialog(
-        title: const Text('Contexte des tâches importées'),
-        children: [
-          for (final c in [...kContexts, none])
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(d, c),
-              child: Text(c == none ? 'Aucun' : c),
-            ),
-        ],
-      ),
-    );
-    if (context_ == null) return;
-    await _s.settings.setNotionImport(
-      chosen.toMap(),
-      context_ == none ? null : context_,
-    );
+    if (chosen == null) return;
+    await _s.settings.setNotionImport(chosen.toMap(), null);
     await _import(chosen);
   }
 
@@ -544,11 +525,7 @@ class _NotionSettingsSectionState extends State<NotionSettingsSection> {
               enabled: ready,
               leading: const Icon(Icons.download_outlined),
               title: const Text('Base à importer (Grokbot…)'),
-              subtitle: Text(
-                source == null
-                    ? 'À choisir'
-                    : '${source.name}${settings.notionImportContext == null ? '' : ' → ${settings.notionImportContext}'}',
-              ),
+              subtitle: Text(source == null ? 'À choisir' : source.name),
               onTap: ready ? _chooseImport : null,
             ),
             SwitchListTile(

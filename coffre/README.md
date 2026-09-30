@@ -173,7 +173,7 @@ Avant chaque envoi, Coffre masque les noms précédés d'une civilité (Mme, M.,
 2. Dans Notion, ouvrir la base cible › `•••` › *Connexions* › ajouter l'intégration.
 3. *Réglages › Notion › Jeton d'intégration* : coller le jeton, puis *Base de destination*.
 4. Dans un élément : *Envoyer vers Notion* (titre, date du rappel si la base a une colonne date, texte complet).
-5. **Import (Grokbot…)** : *Réglages › Notion › Base à importer*, puis le contexte des tâches (ex. Travail). La base doit aussi être partagée avec l'intégration (••• › Connexions).
+5. **Import (Grokbot…)** : *Réglages › Notion › Base à importer*. La base doit aussi être partagée avec l'intégration (••• › Connexions).
    - À chaque ouverture de Coffre, les nouvelles tâches arrivent dans l'Inbox : titre, notes et contenu de la page, échéance → rappel (9 h sans heure), P1/P2/P3 → priorité, listes (Contexte, Domaine…) → tags, Bloqué / Délégué → tags.
    - Une tâche passée à « Fait » dans Notion se ferme dans Coffre ; « Fait » dans Coffre la passe à « Fait » dans Notion (après le délai d'annulation).
    - Sans doublon : le lien de la page est gardé.
