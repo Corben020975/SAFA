@@ -90,4 +90,29 @@ void main() {
       expect(normalizeTag('###'), isNull);
     });
   });
+
+  test('échéances des mails', () {
+    final now = DateTime(2026, 10, 7, 11); // mercredi
+    DateTime? at(String text) => ReminderParser.parse(text, now: now)?.when;
+    expect(
+      at('Envoyer le rapport d’ici la fin de la semaine'),
+      DateTime(2026, 10, 9, 9),
+    );
+    expect(at('Budget pour la fin du mois'), DateTime(2026, 10, 31, 9));
+    expect(
+      at('Planning à revoir la semaine prochaine'),
+      DateTime(2026, 10, 12, 9),
+    );
+    expect(at('Dossier à rendre pour le 15'), DateTime(2026, 10, 15, 9));
+    expect(
+      ReminderParser.strip(
+        'Envoyer le rapport d’ici la fin de la semaine',
+        ReminderParser.parse(
+          'Envoyer le rapport d’ici la fin de la semaine',
+          now: now,
+        )!,
+      ),
+      'Envoyer le rapport',
+    );
+  });
 }

@@ -56,6 +56,18 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <!-- Panneau « Ajouter à Coffre » : transparent, dans la tâche de l'app
+             d'origine (taskAffinity vide), absent des récents. -->
+        <activity
+            android:name=".QuickCaptureActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:theme="@style/QuickTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
             <!-- « Ajouter à Coffre » dans le menu de sélection de texte (Outlook…). -->
             <intent-filter android:label="Ajouter à Coffre">
                 <action android:name="android.intent.action.PROCESS_TEXT" />

@@ -96,6 +96,17 @@ class AiAssistant {
     );
   }
 
+  /// Extrait de mail ou de message → une tâche courte, échéance en clair
+  /// (relue ensuite par l'analyse locale pour poser le rappel).
+  Future<String> toTask(String text) => _send(
+    '$_base\n\nTransforme ce texte (extrait de mail ou de message) en UNE tâche '
+        'courte pour moi : verbe à l\'infinitif, 12 mots maximum. Si une échéance est '
+        'mentionnée, termine par elle en clair (ex. « vendredi », « le 15 octobre », '
+        '« fin du mois »). Renvoie uniquement cette ligne.',
+    text.trim(),
+    'low',
+  );
+
   Future<String> ask(String question) =>
       _send(_base, question.trim(), AiAction.ask.effort);
 

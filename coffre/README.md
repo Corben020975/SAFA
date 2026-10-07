@@ -10,7 +10,7 @@ Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrée
 - **Plus tard** sur chaque carte, **pré-alerte** 1 h 30 avant un rendez-vous, report 5/15/60 min depuis la notification.
 - **Rappel réglable** : date et heure modifiables séparément, heures « matin » et « soir » par défaut au choix (Réglages).
 - **Rappels répétés** : chaque jour, en semaine, chaque semaine, toutes les 2 semaines, chaque mois, tous les 3 mois, chaque année. Se dicte (« réunion d'équipe chaque lundi à 9h », « tous les soirs »). « Fait » renvoie l'élément à sa prochaine date.
-- **Partager › Coffre** depuis Gmail, WhatsApp, Notes…, ou **Ajouter à Coffre** dans le menu de sélection de texte (Outlook, navigateur, PDF…) : le texte arrive dans l'écran de capture.
+- **Ajouter à Coffre** dans le menu de sélection de texte (Outlook, navigateur, PDF…) ou **Partager › Coffre** : un petit panneau s'ouvre par-dessus l'app, on enregistre et on reste dans le mail. Échéances des mails reconnues (« d'ici la fin de la semaine », « pour le 15 », « fin du mois », « la semaine prochaine »), source en tag (`#outlook`, `#whatsapp`…), bouton ✦ *Reformuler* par l'IA.
 - **Verrouillage par empreinte** (ou code du téléphone), à l'ouverture et après 1 minute en arrière-plan (*Réglages › Confidentialité*).
 - **Assistant IA** : synthétiser, développer, découper en tâches, reformuler, rédiger un message, brief du jour.
   Au choix : **Gemini** (Google, clé gratuite) ou **Claude** (Anthropic, payant à l'usage).

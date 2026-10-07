@@ -83,6 +83,8 @@ class ReminderParser {
 
   static final _day = RegExp(
     '(?<![a-z])$_connector('
+    // Échéances des mails : « d'ici la fin de la semaine », « fin du mois »…
+    r'(?:la\s+)?fin\s+(?:de\s+(?:la\s+)?semaine|du\s+mois)|(?:la\s+)?semaine\s+prochaine|'
     r"aujourd.?hui|apres[- ]demain|demain|ce soir|ce matin|cet apres[- ]midi|ce midi|"
     r'(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)(?:\s+prochain)?|'
     r'le\s+(\d{1,2})(?:\s*[/.-]\s*(\d{1,2}))?(?:\s+(janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre))?'
@@ -215,7 +217,17 @@ class ReminderParser {
     DateTime? day;
     (int, int)? time;
 
-    if (word.startsWith('aujourd')) {
+    if (word.contains('semaine prochaine')) {
+      // Lundi prochain.
+      var delta = (DateTime.monday - now.weekday) % 7;
+      if (delta == 0) delta = 7;
+      day = _addDays(today, delta);
+    } else if (word.contains('fin du mois')) {
+      day = DateTime(now.year, now.month + 1, 0);
+    } else if (word.contains('fin de')) {
+      // « Fin de semaine » au travail : le vendredi.
+      day = _addDays(today, (DateTime.friday - now.weekday) % 7);
+    } else if (word.startsWith('aujourd')) {
       day = today;
     } else if (word.startsWith('apres')) {
       day = _addDays(today, 2);

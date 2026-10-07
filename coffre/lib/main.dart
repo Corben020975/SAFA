@@ -11,6 +11,7 @@ import 'core/app_services.dart';
 import 'data/app_settings.dart';
 import 'data/backup_service.dart';
 import 'data/db_opener.dart';
+import 'quick_capture.dart';
 import 'services/ai/ai_assistant.dart';
 import 'services/ai/claude_client.dart';
 import 'services/ai/gemini_client.dart';
@@ -74,6 +75,10 @@ Future<void> main() async {
     runApp(_StartupErrorApp(error: '$error'));
   }
 }
+
+/// Point d'entrée du panneau « Ajouter à Coffre » (QuickCaptureActivity).
+@pragma('vm:entry-point')
+Future<void> quickCaptureMain() => runQuickCapture();
 
 /// Plutôt qu'un écran blanc : un message lisible à recopier.
 class _StartupErrorApp extends StatelessWidget {
