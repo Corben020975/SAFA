@@ -15,6 +15,8 @@ class NotificationService {
   static const _channelName = 'Rappels';
   static const _channelDescription = 'Rappels de tâches, idées et notes';
   static const testNotificationId = 2000000000;
+  static const digestNotificationId = 2000000001;
+  static const _digestChannelId = 'coffre_notion_v1';
   static const _icon = 'ic_stat_coffre';
 
   static const snoozeActions = {
@@ -55,7 +57,33 @@ class NotificationService {
         showBadge: true,
       ),
     );
+    await _android?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _digestChannelId,
+        'Import Notion',
+        description: 'Nouvelles tâches de Notion et brief du jour',
+        importance: Importance.defaultImportance,
+      ),
+    );
   }
+
+  /// Notification d'information (import Notion à 7 h 30 / 13 h, brief IA).
+  Future<void> showDigest(String title, String body) => _plugin.show(
+    id: digestNotificationId,
+    title: title,
+    body: body,
+    notificationDetails: NotificationDetails(
+      android: AndroidNotificationDetails(
+        _digestChannelId,
+        'Import Notion',
+        channelDescription: 'Nouvelles tâches de Notion et brief du jour',
+        icon: _icon,
+        visibility: NotificationVisibility.private,
+        color: const Color(0xFF8FC1B1),
+        styleInformation: BigTextStyleInformation(body),
+      ),
+    ),
+  );
 
   /// Programme (ou reprogramme) le rappel de l'élément. Annule s'il n'y a
   /// plus de rappel futur. Retombe sur une alarme inexacte si Android refuse

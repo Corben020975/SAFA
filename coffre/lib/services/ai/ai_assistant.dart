@@ -75,6 +75,22 @@ class AiAssistant {
     return _send('$_base\n\n$request', describe(item), action.effort);
   }
 
+  /// Brief très court pour la notification de 7 h 30 / 13 h.
+  Future<String> digest(List<Item> open, DateTime now) => _send(
+    '$_base\n\nEn 3 lignes maximum, sans titre ni formule : ce qui compte '
+        'maintenant (priorités, échéances proches, retards). Une ligne par point.',
+    'Nous sommes le ${formatLong(now)}.\n${_lines(open, now)}',
+    'low',
+  );
+
+  static String _lines(List<Item> open, DateTime now) =>
+      'Mes éléments ouverts (type | priorité | échéance | contexte | titre) :\n'
+      '${open.take(40).map((i) {
+        final title = i.content.split('\n').first;
+        final when = i.remindAt == null ? '-' : formatReminder(i.remindAt!, now: now);
+        return '${i.kind.label} | ${i.priority.label} | $when | ${i.context ?? '-'} | $title';
+      }).join('\n')}';
+
   /// Brief du jour à partir des éléments ouverts (titres, dates, contextes).
   Future<String> dayBrief(List<Item> open, DateTime now) {
     final lines = open

@@ -177,6 +177,7 @@ Avant chaque envoi, Coffre masque les noms précédés d'une civilité (Mme, M.,
    - À chaque ouverture de Coffre, les nouvelles tâches arrivent dans l'Inbox : titre, notes et contenu de la page, échéance → rappel (9 h sans heure), P1/P2/P3 → priorité, listes (Contexte, Domaine…) → tags, Bloqué / Délégué → tags.
    - Une tâche passée à « Fait » dans Notion se ferme dans Coffre ; « Fait » dans Coffre la passe à « Fait » dans Notion (après le délai d'annulation).
    - Sans doublon : le lien de la page est gardé.
+   - **Import programmé à 7 h 30 et 13 h**, même app fermée : notification s'il y a de nouvelles tâches. Option **Brief IA** (désactivée par défaut) : tes priorités en 3 lignes dans la même notification, rédigées par Gemini ou Claude (tâches ouvertes envoyées, noms masqués).
 
 ---
 

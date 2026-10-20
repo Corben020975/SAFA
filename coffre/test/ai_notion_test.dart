@@ -8,11 +8,13 @@ import 'package:coffre/services/ai/ai_engine.dart';
 import 'package:coffre/services/ai/claude_client.dart';
 import 'package:coffre/services/ai/gemini_client.dart';
 import 'package:coffre/services/notion_import.dart';
+import 'package:coffre/services/notion_schedule.dart';
 import 'package:coffre/services/notion_service.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 Item _item({
   String content = 'Rappeler Mme Dupont pour le dossier AF',
@@ -744,6 +746,41 @@ void main() {
         }, const {}),
         isNull,
       );
+    });
+  });
+
+  group('Import programmé', () {
+    test('créneaux 7 h 30 et 13 h', () {
+      expect(
+        nextNotionSync(DateTime(2026, 10, 20, 6)),
+        DateTime(2026, 10, 20, 7, 30),
+      );
+      expect(
+        nextNotionSync(DateTime(2026, 10, 20, 7, 30)),
+        DateTime(2026, 10, 20, 13),
+      );
+      expect(
+        nextNotionSync(DateTime(2026, 10, 20, 15)),
+        DateTime(2026, 10, 21, 7, 30),
+      );
+      expect(
+        nextNotionSync(DateTime(2026, 10, 31, 23)),
+        DateTime(2026, 11, 1, 7, 30),
+      );
+    });
+
+    test('brief IA : moteur choisi, données masquées', () async {
+      await initializeDateFormatting('fr');
+      final db = AppDatabase(NativeDatabase.memory());
+      final settings = AppSettings(db);
+      await settings.load();
+      final gemini = _FakeEngine();
+      final assistant = AiAssistant(_FakeEngine(), gemini, settings);
+      await assistant.digest([_item()], DateTime(2026, 10, 20, 7, 30));
+      expect(gemini.system, contains('3 lignes'));
+      expect(gemini.prompt, contains('[PERSONNE 1]'));
+      expect(gemini.prompt, isNot(contains('Dupont')));
+      await db.close();
     });
   });
 }

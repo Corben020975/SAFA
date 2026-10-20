@@ -4,10 +4,12 @@ import '../../core/app_services.dart';
 import '../../core/reminder_defaults.dart';
 import '../../data/app_settings.dart';
 import '../../services/notion_import.dart';
+import '../../services/notion_schedule.dart';
 import '../../services/notion_service.dart';
 import '../../services/secret_store.dart';
 import '../../services/system_channel.dart';
 import '../theme.dart';
+import '../widgets/ai_sheet.dart';
 
 /// Heures utilisées par « demain », « lundi », « ce soir » et les raccourcis.
 class DefaultTimesTiles extends StatelessWidget {
@@ -449,6 +451,7 @@ class _NotionSettingsSectionState extends State<NotionSettingsSection> {
     final chosen = await _pickBase('Base à importer (Grokbot…)');
     if (chosen == null) return;
     await _s.settings.setNotionImport(chosen.toMap(), null);
+    await scheduleNotionSync(_s.settings);
     await _import(chosen);
   }
 
@@ -537,6 +540,35 @@ class _NotionSettingsSectionState extends State<NotionSettingsSection> {
               value: settings.notionAutoImport,
               onChanged: ready && source != null
                   ? settings.setNotionAutoImport
+                  : null,
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.schedule),
+              title: const Text('Importer à 7 h 30 et 13 h'),
+              subtitle: const Text(
+                'Même app fermée · notification s\'il y a du nouveau',
+              ),
+              value: settings.notionScheduled,
+              onChanged: ready && source != null
+                  ? (on) async {
+                      await settings.setNotionScheduled(on);
+                      await scheduleNotionSync(settings);
+                    }
+                  : null,
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.auto_awesome),
+              title: const Text('Brief IA dans cette notification'),
+              subtitle: Text(
+                'Tes priorités en 3 lignes, rédigées par ${settings.aiProvider.label}. '
+                'Tes tâches ouvertes lui sont envoyées (noms masqués).',
+              ),
+              value: settings.aiDigest,
+              onChanged: ready && source != null && settings.notionScheduled
+                  ? (on) async {
+                      if (on && !await ensureAiReady(context)) return;
+                      await settings.setAiDigest(on);
+                    }
                   : null,
             ),
             ListTile(

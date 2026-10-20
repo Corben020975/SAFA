@@ -51,6 +51,12 @@ class AppSettings extends ChangeNotifier {
   /// « Fait » dans Coffre → « Fait » dans Notion.
   bool notionSyncDone = true;
 
+  /// Import programmé à 7 h 30 et 13 h, même app fermée.
+  bool notionScheduled = true;
+
+  /// Brief IA joint à cette notification (texte envoyé à l'IA : opt-in).
+  bool aiDigest = false;
+
   Future<void> load() async {
     final p = await _db.allPrefs();
     themeMode = ThemeMode.values.asNameMap()[p['theme']] ?? ThemeMode.dark;
@@ -92,6 +98,8 @@ class AppSettings extends ChangeNotifier {
     notionImportContext = (importContext ?? '').isEmpty ? null : importContext;
     notionAutoImport = p['notionAutoImport'] != 'false';
     notionSyncDone = p['notionSyncDone'] != 'false';
+    notionScheduled = p['notionScheduled'] != 'false';
+    aiDigest = p['aiDigest'] == 'true';
     _applyDefaults();
   }
 
@@ -170,6 +178,10 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> setNotionAutoImport(bool value) =>
       _set(() => notionAutoImport = value, 'notionAutoImport', '$value');
+  Future<void> setNotionScheduled(bool value) =>
+      _set(() => notionScheduled = value, 'notionScheduled', '$value');
+  Future<void> setAiDigest(bool value) =>
+      _set(() => aiDigest = value, 'aiDigest', '$value');
   Future<void> setNotionSyncDone(bool value) =>
       _set(() => notionSyncDone = value, 'notionSyncDone', '$value');
 

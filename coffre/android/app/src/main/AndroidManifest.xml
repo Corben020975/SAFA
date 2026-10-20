@@ -13,6 +13,8 @@
     <!-- Reprogrammer les rappels après un redémarrage du téléphone. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Import Notion programmé (android_alarm_manager_plus). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Afficher la boîte « autoriser en arrière-plan sans restriction » (Samsung). -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Dictée. -->
@@ -81,6 +83,23 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <!-- Import Notion de 7 h 30 / 13 h, même app fermée. -->
+        <service
+            android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false" />
+        <receiver
+            android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmBroadcastReceiver"
+            android:exported="false" />
+        <receiver
+            android:name="dev.fluttercommunity.plus.androidalarmmanager.RebootBroadcastReceiver"
+            android:enabled="false"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- flutter_local_notifications : affichage programmé, boutons
              « 5 min / 15 min / 1 h », reprogrammation au démarrage du téléphone. -->

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,6 +18,7 @@ import 'services/ai/claude_client.dart';
 import 'services/ai/gemini_client.dart';
 import 'services/launch_router.dart';
 import 'services/notification_service.dart';
+import 'services/notion_schedule.dart';
 import 'services/notion_service.dart';
 import 'services/secret_store.dart';
 import 'services/speech_service.dart';
@@ -68,6 +70,12 @@ Future<void> main() async {
 
     // La base fait foi : on réaligne les alarmes sans bloquer l'affichage.
     unawaited(db.pendingReminders().then(notifications.resync));
+    // Import Notion de 7 h 30 / 13 h, même app fermée.
+    unawaited(
+      AndroidAlarmManager.initialize().then(
+        (_) => scheduleNotionSync(settings),
+      ),
+    );
 
     runApp(CoffreApp(services: services, router: router));
   } catch (error, stack) {
