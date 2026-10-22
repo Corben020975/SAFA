@@ -5,8 +5,6 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <!-- Icône thématique (Android 13+) : mêmes formes, une seule teinte. -->
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:pathData="M28.00,54.00A26,26 0,1 1,80.00,54.00A26,26 0,1 1,28.00,54.00Z" />
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.4" android:pathData="M43.50,54.00A10.5,10.5 0,1 1,64.50,54.00A10.5,10.5 0,1 1,43.50,54.00Z" />
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.6" android:strokeLineCap="round" android:pathData="M57.18,57.18L63.90,63.90M50.82,57.18L44.10,63.90M50.82,50.82L44.10,44.10M57.18,50.82L63.90,44.10" />
-    <path android:fillColor="#FFFFFFFF" android:pathData="M62.31,64.61A2.3,2.3 0,1 1,66.91,64.61A2.3,2.3 0,1 1,62.31,64.61ZM41.09,64.61A2.3,2.3 0,1 1,45.69,64.61A2.3,2.3 0,1 1,41.09,64.61ZM41.09,43.39A2.3,2.3 0,1 1,45.69,43.39A2.3,2.3 0,1 1,41.09,43.39ZM62.31,43.39A2.3,2.3 0,1 1,66.91,43.39A2.3,2.3 0,1 1,62.31,43.39ZM49.40,54.00A4.6,4.6 0,1 1,58.60,54.00A4.6,4.6 0,1 1,49.40,54.00Z" />
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M42,30H66A10,10 0,0 1,76,40V68A10,10 0,0 1,66,78H42A10,10 0,0 1,32,68V40A10,10 0,0 1,42,30ZM43,34.3H65A6.7,6.7 0,0 1,71.7,41V67A6.7,6.7 0,0 1,65,73.7H43A6.7,6.7 0,0 1,36.3,67V41A6.7,6.7 0,0 1,43,34.3ZM43,35.7H65A5.3,5.3 0,0 1,70.3,41V67A5.3,5.3 0,0 1,65,72.3H43A5.3,5.3 0,0 1,37.7,67V41A5.3,5.3 0,0 1,43,35.7ZM56,54A6,6 0,1 1,68,54A6,6 0,1 1,56,54ZM59.6,54A2.4,2.4 0,1 1,64.4,54A2.4,2.4 0,1 1,59.6,54Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M32.2,38H32.2A1.7,1.7 0,0 1,33.9,39.7V43.3A1.7,1.7 0,0 1,32.2,45H32.2A1.7,1.7 0,0 1,30.5,43.3V39.7A1.7,1.7 0,0 1,32.2,38ZM32.2,63H32.2A1.7,1.7 0,0 1,33.9,64.7V68.3A1.7,1.7 0,0 1,32.2,70H32.2A1.7,1.7 0,0 1,30.5,68.3V64.7A1.7,1.7 0,0 1,32.2,63Z" />
 </vector>

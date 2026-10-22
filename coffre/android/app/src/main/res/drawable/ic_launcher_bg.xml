@@ -5,18 +5,18 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Fond sarcelle profond, lueur douce en haut à gauche. -->
+    <!-- Fond vert profond, lueur douce au centre. -->
     <path android:pathData="M0,0H108V108H0Z">
         <aapt:attr name="android:fillColor">
             <gradient android:type="linear" android:startX="0" android:startY="0" android:endX="108" android:endY="108">
-                <item android:offset="0" android:color="#FF1B3533" />
-                <item android:offset="1" android:color="#FF0B1416" />
+                <item android:offset="0" android:color="#FF16302D" />
+                <item android:offset="1" android:color="#FF060E0D" />
             </gradient>
         </aapt:attr>
     </path>
     <path android:pathData="M0,0H108V108H0Z">
         <aapt:attr name="android:fillColor">
-            <gradient android:type="radial" android:centerX="34" android:centerY="28" android:gradientRadius="60">
+            <gradient android:type="radial" android:centerX="54" android:centerY="46" android:gradientRadius="52">
                 <item android:offset="0" android:color="#8C3C6A61" />
                 <item android:offset="1" android:color="#003C6A61" />
             </gradient>
