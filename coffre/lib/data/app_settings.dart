@@ -51,6 +51,13 @@ class AppSettings extends ChangeNotifier {
   /// « Fait » dans Coffre → « Fait » dans Notion.
   bool notionSyncDone = true;
 
+  /// « Les 3 du jour » : jour (aaaa-m-j) et éléments choisis.
+  String? focusDay;
+  List<int> focusIds = const [];
+
+  /// Notification « Tes 3 priorités » à 7 h 30.
+  bool morningFocus = true;
+
   /// Import programmé à 7 h 30 et 13 h, même app fermée.
   bool notionScheduled = true;
 
@@ -99,6 +106,13 @@ class AppSettings extends ChangeNotifier {
     notionAutoImport = p['notionAutoImport'] != 'false';
     notionSyncDone = p['notionSyncDone'] != 'false';
     notionScheduled = p['notionScheduled'] != 'false';
+    morningFocus = p['morningFocus'] != 'false';
+    focusDay = p['focusDay'];
+    focusIds = (p['focusIds'] ?? '')
+        .split(',')
+        .map(int.tryParse)
+        .whereType<int>()
+        .toList();
     aiDigest = p['aiDigest'] == 'true';
     _applyDefaults();
   }
@@ -178,6 +192,14 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> setNotionAutoImport(bool value) =>
       _set(() => notionAutoImport = value, 'notionAutoImport', '$value');
+  Future<void> setFocus(String day, List<int> ids) async {
+    focusIds = List.unmodifiable(ids);
+    await _db.setPref('focusIds', ids.join(','));
+    await _set(() => focusDay = day, 'focusDay', day);
+  }
+
+  Future<void> setMorningFocus(bool value) =>
+      _set(() => morningFocus = value, 'morningFocus', '$value');
   Future<void> setNotionScheduled(bool value) =>
       _set(() => notionScheduled = value, 'notionScheduled', '$value');
   Future<void> setAiDigest(bool value) =>

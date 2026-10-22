@@ -7,17 +7,20 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 
 import '../data/app_settings.dart';
+import '../data/database.dart';
 import '../data/db_opener.dart';
 import '../data/enums.dart';
 import 'ai/ai_assistant.dart';
 import 'ai/claude_client.dart';
 import 'ai/gemini_client.dart';
+import 'day_focus.dart';
 import 'notification_service.dart';
 import 'notion_import.dart';
 import 'notion_service.dart';
 import 'secret_store.dart';
 
-/// Import Notion programmé à heures fixes, même app fermée (AlarmManager).
+/// Rendez-vous quotidiens, même app fermée (AlarmManager) : à 7 h 30
+/// « Tes 3 priorités » ; à 7 h 30 et 13 h, import Notion si activé.
 const kNotionSyncTimes = [(7, 30), (13, 0)];
 const _alarmId = 7301;
 
@@ -33,11 +36,13 @@ DateTime nextNotionSync(DateTime now) {
   return DateTime(now.year, now.month, now.day + 1, hour, minute);
 }
 
-/// (Re)programme le prochain import, ou l'annule si désactivé.
+bool _notionOn(AppSettings s) => s.notionScheduled && s.notionImport != null;
+
+/// (Re)programme le prochain créneau, ou l'annule si tout est désactivé.
 Future<void> scheduleNotionSync(AppSettings settings) async {
   if (!Platform.isAndroid) return;
   try {
-    if (!settings.notionScheduled || settings.notionImport == null) {
+    if (!settings.morningFocus && !_notionOn(settings)) {
       await AndroidAlarmManager.cancel(_alarmId);
       return;
     }
@@ -67,25 +72,30 @@ Future<void> notionSyncCallback() async {
   final settings = AppSettings(db);
   try {
     await settings.load();
+    final now = DateTime.now();
+    final morning = now.hour < 11;
     final target = NotionTarget.fromMap(settings.notionImport);
-    if (!settings.notionScheduled || target == null) return;
+    final notionOn = settings.notionScheduled && target != null;
+    if (!notionOn && !(morning && settings.morningFocus)) return;
     final secrets = SecretStore();
     final notifications = NotificationService();
     await notifications.init();
 
     NotionImportResult? result;
-    try {
-      result = await importNotionTasks(
-        db,
-        NotionService(() => secrets.read(SecretStore.notionKey)),
-        target,
-        context: settings.notionImportContext,
-      );
-      for (final item in [...result.added, ...result.closed]) {
-        await notifications.schedule(item);
+    if (notionOn) {
+      try {
+        result = await importNotionTasks(
+          db,
+          NotionService(() => secrets.read(SecretStore.notionKey)),
+          target,
+          context: settings.notionImportContext,
+        );
+        for (final item in [...result.added, ...result.closed]) {
+          await notifications.schedule(item);
+        }
+      } catch (_) {
+        result = null; // hors ligne : on réessaiera au prochain créneau
       }
-    } catch (_) {
-      result = null; // hors ligne : on réessaiera au prochain créneau
     }
 
     String? brief;
@@ -106,11 +116,38 @@ Future<void> notionSyncCallback() async {
     }
 
     final added = result?.added ?? const [];
+    String line(Item i) => i.content.split('\n').first;
+
+    // 7 h 30 : « Tes 3 priorités », choisies pour la journée.
+    if (morning && settings.morningFocus) {
+      final open = (await db.allItems())
+          .where((i) => i.status != ItemStatus.done)
+          .toList();
+      final focus = await DayFocus.ensure(settings, open, now);
+      if (focus.isNotEmpty || brief != null || added.isNotEmpty) {
+        await notifications.showDigest(
+          focus.length == 1
+              ? 'Ta priorité du jour'
+              : 'Tes ${focus.length} priorités du jour',
+          [
+            ?brief,
+            if (focus.isNotEmpty)
+              [
+                for (var k = 0; k < focus.length; k++)
+                  '${k + 1}. ${line(focus[k])}',
+              ].join('\n'),
+            if (added.isNotEmpty)
+              added.length == 1
+                  ? '+ 1 nouvelle tâche depuis Notion'
+                  : '+ ${added.length} nouvelles tâches depuis Notion',
+          ].join('\n\n'),
+        );
+      }
+      return;
+    }
+
     if (added.isEmpty && brief == null) return;
-    final titles = added
-        .take(4)
-        .map((i) => '• ${i.content.split('\n').first}')
-        .join('\n');
+    final titles = added.take(4).map((i) => '• ${line(i)}').join('\n');
     await notifications.showDigest(
       added.isEmpty
           ? 'Ton point Coffre'

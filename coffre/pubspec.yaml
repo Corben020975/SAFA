@@ -3,7 +3,7 @@ description: "Coffre – capture privée hors-ligne (idées, tâches, notes, rap
 publish_to: 'none'
 
 # versionName+versionCode : incrémenter le +N à chaque APK installé par-dessus.
-version: 1.9.0+13
+version: 1.10.0+14
 
 environment:
   sdk: ^3.13.4

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_services.dart';
 import '../../core/date_labels.dart';
 import '../../services/notification_service.dart';
+import '../../services/notion_schedule.dart';
 import 'connections_settings.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -100,6 +101,18 @@ class SettingsScreen extends StatelessWidget {
               title: const Text('Son et vibration des rappels'),
               subtitle: const Text('Réglages Android du canal « Rappels »'),
               onTap: s.system.openNotificationSettings,
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.wb_twilight),
+              title: const Text('Mes 3 priorités à 7 h 30'),
+              subtitle: const Text(
+                'Une notification chaque matin, même app fermée',
+              ),
+              value: settings.morningFocus,
+              onChanged: (on) async {
+                await settings.setMorningFocus(on);
+                await scheduleNotionSync(settings);
+              },
             ),
             const DefaultTimesTiles(),
             const _Header('Assistant IA'),

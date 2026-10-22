@@ -3,7 +3,7 @@
 App Android personnelle, privée, hors-ligne par défaut : idées, tâches, notes et rappels au même endroit.
 Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrées sur le téléphone.
 
-- **Jour** : ce qui compte maintenant, aujourd'hui, cette semaine, plus une idée récente à ne pas perdre.
+- **Jour** : ta journée en une frise (rendez-vous, rappels, créneaux libres, repère « maintenant ») et **les 3 du jour** : 3 priorités choisies le matin (ou suggérées : retards, priorité haute, échéance). Le reste attend dans deux tuiles. Notification « Tes 3 priorités » à 7 h 30.
 - **Flux** : tout le contenu, avec filtres, recherche, tri et gestes de balayage.
 - **Barre de capture** toujours en bas : tu écris ou dictes, Coffre devine le type, la date, la priorité
   et le contexte (Travail, Santé, Admin…), tu relis l'aperçu, tu envoies. Le texte d'origine est gardé.

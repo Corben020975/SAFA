@@ -13,7 +13,7 @@ import 'package:coffre/services/secret_store.dart';
 import 'package:coffre/services/notification_service.dart';
 import 'package:coffre/services/speech_service.dart';
 import 'package:coffre/services/system_channel.dart';
-import 'package:coffre/ui/widgets/item_card.dart';
+import 'package:coffre/ui/widgets/focus_card.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -109,22 +109,11 @@ void main() {
     );
     await settle(tester);
 
-    // Vue Jour : rubrique Maintenant + idée à ne pas perdre.
-    expect(find.text('1 chose maintenant.'), findsOneWidget);
-    expect(find.text('Appeler le médecin'), findsOneWidget);
-    expect(find.text('Tâche · Santé'), findsOneWidget);
-    await tester.drag(
-      find.byType(CustomScrollView).first,
-      const Offset(0, -400),
-    );
-    await settle(tester);
-    expect(find.text('À ne pas perdre'), findsOneWidget);
-    expect(find.text('Idée de prompt'), findsOneWidget);
-    await tester.drag(
-      find.byType(CustomScrollView).first,
-      const Offset(0, 800),
-    );
-    await settle(tester);
+    // Vue Jour : une priorité (l'idée n'en est pas une), visible aussi
+    // dans la frise de la journée.
+    expect(find.text('Ta priorité.'), findsOneWidget);
+    expect(find.text('Les 3 du jour'), findsOneWidget);
+    expect(find.text('Appeler le médecin'), findsWidgets);
 
     // Capture rapide : aperçu de l'analyse avant envoi, puis enregistrement.
     await tester.enterText(
@@ -152,11 +141,14 @@ void main() {
     expect(find.textContaining('Enregistré · Tâche'), findsNothing);
 
     // « Fait » depuis la carte : la tâche quitte la vue Jour, l'alarme est annulée.
-    final card = find.ancestor(
-      of: find.text('Appeler le médecin'),
-      matching: find.byType(ItemCard),
+    final card = find.byWidgetPredicate(
+      (w) => w is FocusCard && w.item.content == 'Appeler le médecin',
     );
-    await tester.tap(find.descendant(of: card, matching: find.text('Fait')));
+    await tester.ensureVisible(card);
+    await settle(tester);
+    await tester.tap(
+      find.descendant(of: card, matching: find.byTooltip('Fait')),
+    );
     await settle(tester);
     expect(find.text('Appeler le médecin'), findsNothing);
     expect(calls, contains('cancel'));

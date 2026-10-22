@@ -36,12 +36,19 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
-      body: IndexedStack(
-        index: _tab,
-        children: [
-          JourView(onTryExample: _tryExample),
-          const FluxView(),
-        ],
+      // SafeArea : le contenu ne défile plus sous l'heure et la batterie.
+      body: SafeArea(
+        bottom: false,
+        child: IndexedStack(
+          index: _tab,
+          children: [
+            JourView(
+              onTryExample: _tryExample,
+              onOpenInbox: () => setState(() => _tab = 1),
+            ),
+            const FluxView(),
+          ],
+        ),
       ),
       // La barre de capture remonte au-dessus du clavier ; les onglets
       // disparaissent pendant la saisie pour laisser la place.
