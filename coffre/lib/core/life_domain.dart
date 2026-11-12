@@ -1,5 +1,4 @@
 import '../data/database.dart';
-import '../data/enums.dart';
 
 /// Filtre de la journée : tout, travail (Grok / SAFA), ou perso.
 enum DayMode {

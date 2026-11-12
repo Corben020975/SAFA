@@ -37,7 +37,7 @@ class ItemTile extends StatelessWidget {
     final accent = priorityColor(item.priority, scheme);
     final meta = [
       if (showVerb) split.verb!,
-      if (badge != null) badge,
+      ?badge,
       itemMeta(item),
       if (item.status == ItemStatus.doing) 'En cours',
       ...item.tags
