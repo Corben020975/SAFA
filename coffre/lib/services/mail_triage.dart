@@ -68,6 +68,10 @@ class GmailReader {
   static const maxMails = 30;
   static const _textChars = 900;
 
+  /// Recherche Gmail (extension IMAP X-GM-RAW).
+  static const gmailFilter =
+      'X-GM-RAW "-category:promotions -category:social -category:forums"';
+
   /// Nouveaux mails de la boîte de réception depuis [afterUid] (ou les
   /// 3 derniers jours au premier passage). Renvoie aussi le nouveau curseur.
   static Future<(List<MailDigest>, int?, int?)> fetchNew({
@@ -91,9 +95,11 @@ class GmailReader {
       final validity = box.uidValidity;
       final sameBox = afterUid != null && validity == uidValidity;
       final since = (now ?? DateTime.now()).subtract(const Duration(days: 3));
-      final criteria = sameBox
-          ? 'UID ${afterUid + 1}:*'
-          : 'SINCE ${_imapDate(since)}';
+      // Onglets Gmail : on écarte Promotions, Réseaux sociaux et Forums.
+      // « Mises à jour » reste lu : Gmail y range souvent les factures.
+      final criteria =
+          '${sameBox ? 'UID ${afterUid + 1}:*' : 'SINCE ${_imapDate(since)}'} '
+          '$gmailFilter';
       final search = await client.uidSearchMessages(searchCriteria: criteria);
       final uids =
           (search.matchingSequence?.toList() ?? const <int>[])
