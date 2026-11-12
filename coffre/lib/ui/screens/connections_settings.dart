@@ -678,6 +678,11 @@ class _MailSettingsSectionState extends State<MailSettingsSection> {
     if (on) await _runNow();
   }
 
+  Future<void> _rescan() async {
+    await _s.settings.resetMailCursor();
+    await _runNow();
+  }
+
   Future<void> _runNow() async {
     setState(() => _running = true);
     try {
@@ -693,8 +698,11 @@ class _MailSettingsSectionState extends State<MailSettingsSection> {
       if (mounted) {
         _snack(
           context,
-          '${result.read} mail${result.read > 1 ? 's' : ''} lu${result.read > 1 ? 's' : ''} · '
-          '${n == 0 ? 'rien à faire' : '$n rappel${n > 1 ? 's' : ''} ajouté${n > 1 ? 's' : ''} (Perso)'}',
+          result.found == 0
+              ? 'Aucun nouveau mail depuis le dernier tri'
+              : '${result.found} trouvé${result.found > 1 ? 's' : ''} · '
+                    '${result.read} lu${result.read > 1 ? 's' : ''} · '
+                    '${n == 0 ? 'rien à faire' : '$n rappel${n > 1 ? 's' : ''} ajouté${n > 1 ? 's' : ''} (Perso)'}',
         );
       }
     } catch (e) {
@@ -750,6 +758,15 @@ class _MailSettingsSectionState extends State<MailSettingsSection> {
                     )
                   : null,
               onTap: ready ? _runNow : null,
+            ),
+            ListTile(
+              enabled: ready && !_running,
+              leading: const Icon(Icons.history),
+              title: const Text('Relire les 3 derniers jours'),
+              subtitle: const Text(
+                'Sans doublon avec ce qui est déjà dans Coffre',
+              ),
+              onTap: ready ? _rescan : null,
             ),
             const _Note(
               'Coffre lit les nouveaux mails de ta boîte de réception sans les marquer comme lus. '

@@ -235,6 +235,14 @@ class AppSettings extends ChangeNotifier {
   Future<void> setMailTriage(bool value) =>
       _set(() => mailTriage = value, 'mailTriage', '$value');
 
+  /// Repartir des 3 derniers jours au prochain tri.
+  Future<void> resetMailCursor() async {
+    mailLastUid = null;
+    mailUidValidity = null;
+    await _db.setPref('mailLastUid', '');
+    await _db.setPref('mailUidValidity', '');
+  }
+
   /// Mémorise le dernier mail trié (sans notifier l'interface).
   Future<void> setMailCursor(int uid, int? validity) async {
     mailLastUid = uid;

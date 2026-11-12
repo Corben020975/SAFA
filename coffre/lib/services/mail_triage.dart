@@ -56,7 +56,10 @@ class MailException implements Exception {
 }
 
 class MailTriageResult {
-  const MailTriageResult(this.read, this.added);
+  const MailTriageResult(this.read, this.added, {this.found = 0});
+
+  /// Mails trouvés dans la boîte (avant lecture).
+  final int found;
   final int read;
   final List<Item> added;
 }
@@ -74,7 +77,9 @@ class GmailReader {
 
   /// Nouveaux mails de la boîte de réception depuis [afterUid] (ou les
   /// 3 derniers jours au premier passage). Renvoie aussi le nouveau curseur.
-  static Future<(List<MailDigest>, int?, int?)> fetchNew({
+  /// Renvoie les mails lus, le nouveau curseur, la validité des UID et le
+  /// nombre de mails trouvés par la recherche.
+  static Future<(List<MailDigest>, int?, int?, int)> fetchNew({
     required String address,
     required String password,
     int? afterUid,
@@ -106,7 +111,7 @@ class GmailReader {
               .where((u) => !sameBox || u > afterUid)
               .toList()
             ..sort();
-      if (uids.isEmpty) return (const <MailDigest>[], afterUid, validity);
+      if (uids.isEmpty) return (const <MailDigest>[], afterUid, validity, 0);
       final recent = uids.length > maxMails
           ? uids.sublist(uids.length - maxMails)
           : uids;
@@ -116,8 +121,12 @@ class GmailReader {
         '(UID ENVELOPE BODYSTRUCTURE)',
       );
       final mails = <MailDigest>[];
-      for (final m in heads.messages) {
-        final uid = m.uid;
+      final fetched = heads.messages;
+      for (var k = 0; k < fetched.length; k++) {
+        final m = fetched[k];
+        // UID absent de la réponse : même ordre que la demande.
+        final uid =
+            m.uid ?? (fetched.length == recent.length ? recent[k] : null);
         if (uid == null) continue;
         final env = m.envelope;
         final sender = env?.from?.firstOrNull;
@@ -155,7 +164,13 @@ class GmailReader {
           ),
         );
       }
-      return (mails, uids.last, validity);
+      // Rien de lisible : on n'avance pas le curseur, pour ne rien perdre.
+      return (
+        mails,
+        mails.isEmpty ? afterUid : uids.last,
+        validity,
+        uids.length,
+      );
     } finally {
       try {
         await client.logout();
@@ -320,13 +335,22 @@ Future<MailTriageResult> runMailTriage({
     );
   }
   final at = now ?? DateTime.now();
-  final (mails, lastUid, validity) = await GmailReader.fetchNew(
+  final (fetched, lastUid, validity, found) = await GmailReader.fetchNew(
     address: address,
     password: password,
     afterUid: settings.mailLastUid,
     uidValidity: settings.mailUidValidity,
     now: at,
   );
+  // Mails déjà traités (relecture des 3 derniers jours) : on les saute.
+  final known = {
+    for (final i in await db.allItems())
+      if (i.tags.contains('gmail')) ?i.raw,
+  };
+  final mails = [
+    for (final m in fetched)
+      if (!known.contains(_rawOf(m))) m,
+  ];
   final added = <Item>[];
   if (mails.isNotEmpty) {
     final answer = await ai.mailTriage(describeMails(mails), at);
@@ -341,15 +365,17 @@ Future<MailTriageResult> runMailTriage({
         remindAt: remind,
         preAlert: a.type == 'rdv' && a.hasTime,
         context: 'Perso',
-        raw: 'Mail de ${mail.from}\nObjet : ${mail.subject}',
+        raw: _rawOf(mail),
       );
       await notifications.schedule(item);
       added.add(item);
     }
   }
   if (lastUid != null) await settings.setMailCursor(lastUid, validity);
-  return MailTriageResult(mails.length, added);
+  return MailTriageResult(fetched.length, added, found: found);
 }
+
+String _rawOf(MailDigest m) => 'Mail de ${m.from}\nObjet : ${m.subject}';
 
 /// Rendez-vous trouvés dans les mails : tag « hors agenda » s'il n'y a rien
 /// dans l'agenda du téléphone à ±90 min. Au premier plan uniquement.
