@@ -120,7 +120,9 @@ class FocusCard extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: radius,
             side: BorderSide(
-              color: badge == 'Bloqué' ? p.coral.withValues(alpha: 0.55) : p.line,
+              color: badge == 'Bloqué'
+                  ? p.coral.withValues(alpha: 0.55)
+                  : p.line,
             ),
           ),
           clipBehavior: Clip.antiAlias,
@@ -166,8 +168,7 @@ class FocusCard extends StatelessWidget {
                               spacing: 6,
                               runSpacing: 4,
                               children: [
-                                if (showVerb)
-                                  _MiniChip(split.verb!, p.sand, p),
+                                if (showVerb) _MiniChip(split.verb!, p.sand, p),
                                 if (badge != null)
                                   _MiniChip(
                                     badge,

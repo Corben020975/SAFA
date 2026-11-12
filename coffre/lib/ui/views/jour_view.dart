@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_services.dart';
-import '../../core/life_domain.dart';
 import '../../data/database.dart';
 import '../../data/enums.dart';
 import '../../services/day_focus.dart';
@@ -125,17 +124,12 @@ class _JourViewState extends State<JourView> {
       builder: (context, _) => StreamBuilder<List<Item>>(
         stream: _open,
         builder: (context, snapshot) {
-          final allOpen = snapshot.data ?? const <Item>[];
-          final mode = _s.settings.dayMode;
-          final open = filterByDayMode(allOpen, mode);
+          final open = snapshot.data ?? const <Item>[];
           final now = DateTime.now();
           final today = DateTime(now.year, now.month, now.day);
           final tomorrow = DateTime(now.year, now.month, now.day + 1);
 
-          final chosenRaw = DayFocus.chosen(_s.settings, open, now);
-          final chosen = chosenRaw == null
-              ? null
-              : filterByDayMode(chosenRaw, mode);
+          final chosen = DayFocus.chosen(_s.settings, open, now);
           if (chosen == null && snapshot.hasData && open.isNotEmpty) {
             _rememberFocus(open, now);
           }
@@ -165,8 +159,6 @@ class _JourViewState extends State<JourView> {
               chosen != null &&
               chosen.isEmpty &&
               _s.settings.focusIds.isNotEmpty;
-          final emptyDay =
-              snapshot.hasData && open.isEmpty && todayEvents.isEmpty;
 
           return CustomScrollView(
             slivers: [
@@ -180,38 +172,32 @@ class _JourViewState extends State<JourView> {
                   events: todayEvents.length,
                   overdue: overdue,
                   waiting: waiting,
-                  mode: mode,
                 ),
               ),
-              SliverToBoxAdapter(child: _modeBar(context, mode)),
               const SliverToBoxAdapter(child: ReminderHealthBanner()),
               const SliverToBoxAdapter(child: SetAsideBanner()),
-              if (emptyDay)
-                SliverToBoxAdapter(child: _empty(context, mode: mode))
+              if (snapshot.hasData && open.isEmpty && todayEvents.isEmpty)
+                SliverToBoxAdapter(child: _empty(context))
               else ...[
-                if (mode != DayMode.perso)
-                  _title(context, 'Ta journée', 'agenda + rappels'),
-                if (mode != DayMode.perso)
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    sliver: SliverToBoxAdapter(
-                      child: DayTimeline(
-                        now: now,
-                        events: todayEvents,
-                        reminders: reminders,
-                        agendaOn: _s.settings.agendaEnabled,
-                        allowed: _allowed,
-                        onAllow: _allow,
-                        tomorrowEvents: tomorrowEvents,
-                      ),
+                _title(context, 'Ta journée', 'agenda + rappels'),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverToBoxAdapter(
+                    child: DayTimeline(
+                      now: now,
+                      events: todayEvents,
+                      reminders: reminders,
+                      agendaOn: _s.settings.agendaEnabled,
+                      allowed: _allowed,
+                      onAllow: _allow,
+                      tomorrowEvents: tomorrowEvents,
                     ),
                   ),
+                ),
                 _title(
                   context,
                   'Les 3 du jour',
-                  chosen != null
-                      ? 'choisies · ${mode.label}'
-                      : 'suggestion · ${mode.label}',
+                  chosen != null ? 'choisies ce matin' : 'suggestion',
                   action: tasks.isEmpty
                       ? null
                       : TextButton(
@@ -278,25 +264,6 @@ class _JourViewState extends State<JourView> {
     );
   }
 
-  Widget _modeBar(BuildContext context, DayMode mode) {
-    final p = Palette.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: SegmentedButton<DayMode>(
-        segments: [
-          for (final m in DayMode.values)
-            ButtonSegment(value: m, label: Text(m.label)),
-        ],
-        selected: {mode},
-        onSelectionChanged: (set) => _s.settings.setDayMode(set.first),
-        style: ButtonStyle(
-          visualDensity: VisualDensity.compact,
-          side: WidgetStatePropertyAll(BorderSide(color: p.line)),
-        ),
-      ),
-    );
-  }
-
   Widget _header(
     BuildContext context, {
     required DateTime now,
@@ -306,22 +273,16 @@ class _JourViewState extends State<JourView> {
     required int events,
     required int overdue,
     required int waiting,
-    required DayMode mode,
   }) {
     final p = Palette.of(context);
     final theme = Theme.of(context);
     final date = DateFormat('EEEE d MMMM', 'fr').format(now);
-    final scope = mode == DayMode.all ? '' : ' · ${mode.label}';
     final headline = switch (focus.length) {
-      _ when allDone => 'Bravo, c\'est fait$scope.',
-      0 when open.isEmpty => mode == DayMode.pro
-          ? 'Rien côté pro.'
-          : mode == DayMode.perso
-          ? 'Rien côté perso.'
-          : 'Journée libre.',
-      0 => 'Choisis tes 3$scope.',
-      1 => 'Ta priorité$scope.',
-      final n => 'Tes $n priorités$scope.',
+      _ when allDone => 'Bravo, c\'est fait.',
+      0 when open.isEmpty => 'Journée libre.',
+      0 => 'Choisis tes 3.',
+      1 => 'Ta priorité.',
+      final n => 'Tes $n priorités.',
     };
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 8, 8, 4),
@@ -330,7 +291,7 @@ class _JourViewState extends State<JourView> {
         children: [
           Row(
             children: [
-              Text('Coffre', style: displayStyle(context, 22, color: p.sage)),
+              Text('Coffre', style: displayStyle(context, 18, color: p.muted)),
               const Spacer(),
               if (open.isNotEmpty)
                 IconButton(
@@ -353,7 +314,7 @@ class _JourViewState extends State<JourView> {
           const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.only(right: 14),
-            child: Text(headline, style: displayStyle(context, 34)),
+            child: Text(headline, style: displayStyle(context, 36)),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -449,22 +410,17 @@ class _JourViewState extends State<JourView> {
     );
   }
 
-  Widget _empty(BuildContext context, {required DayMode mode}) {
+  Widget _empty(BuildContext context) {
     final theme = Theme.of(context);
-    final hint = switch (mode) {
-      DayMode.pro =>
-        'Rien à traiter côté pro. Bascule sur Perso, ou capture une tâche Travail.',
-      DayMode.perso =>
-        'Rien côté perso. Bascule sur Pro, ou note une idée personnelle.',
-      DayMode.all =>
-        'Écris ou dicte en bas de l\'écran. Coffre devine le type, la date et le contexte.',
-    };
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 20, 22, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(hint, style: theme.textTheme.bodyLarge),
+          Text(
+            'Écris ou dicte en bas de l\'écran. Coffre devine le type, la date et le contexte.',
+            style: theme.textTheme.bodyLarge,
+          ),
           const SizedBox(height: 18),
           for (final example in _examples)
             Padding(

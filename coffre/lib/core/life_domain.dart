@@ -59,7 +59,9 @@ String? mapNotionTagsToContext(Iterable<String> tags) {
   return null;
 }
 
-bool itemIsPro(Item item) {
+/// Domaine reconnu d'un élément : `true` = pro, `false` = perso,
+/// `null` = pas classé (capture libre sans contexte).
+bool? itemDomain(Item item) {
   if (item.context != null && kProContexts.contains(item.context)) return true;
   if (item.context != null && kPersoContexts.contains(item.context)) {
     return false;
@@ -71,15 +73,19 @@ bool itemIsPro(Item item) {
   }
   // Import Notion sans contexte clair : pro (Grokbot = Todos pro).
   if (item.tags.any((t) => t.toLowerCase() == 'notion')) return true;
-  return false;
+  return null;
 }
 
-bool itemIsPerso(Item item) => !itemIsPro(item);
+bool itemIsPro(Item item) => itemDomain(item) == true;
 
+bool itemIsPerso(Item item) => itemDomain(item) == false;
+
+/// Un élément non classé reste visible dans Pro comme dans Perso :
+/// le filtre ne cache jamais une tâche qu'on n'a pas rangée.
 List<Item> filterByDayMode(List<Item> items, DayMode mode) => switch (mode) {
   DayMode.all => items,
-  DayMode.pro => items.where(itemIsPro).toList(),
-  DayMode.perso => items.where(itemIsPerso).toList(),
+  DayMode.pro => items.where((i) => itemDomain(i) != false).toList(),
+  DayMode.perso => items.where((i) => itemDomain(i) != true).toList(),
 };
 
 /// Tags d'état Grokbot à afficher en badge.

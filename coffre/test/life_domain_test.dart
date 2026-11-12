@@ -47,10 +47,7 @@ void main() {
     });
 
     test('tag notion + suivi est pro', () {
-      expect(
-        itemIsPro(_item(tags: ['notion', 'suivi'])),
-        isTrue,
-      );
+      expect(itemIsPro(_item(tags: ['notion', 'suivi'])), isTrue);
     });
 
     test('Santé est perso', () {
@@ -89,6 +86,12 @@ void main() {
       expect(filterByDayMode(items, DayMode.pro).single.content, 'A');
       expect(filterByDayMode(items, DayMode.perso).single.content, 'B');
       expect(filterByDayMode(items, DayMode.all), hasLength(2));
+    });
+
+    test('une capture sans contexte reste visible des deux côtés', () {
+      final items = [_item(content: 'Sans contexte')];
+      expect(filterByDayMode(items, DayMode.pro), hasLength(1));
+      expect(filterByDayMode(items, DayMode.perso), hasLength(1));
     });
   });
 }
