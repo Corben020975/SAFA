@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/life_domain.dart';
 import '../../data/database.dart';
 import '../../data/enums.dart';
 import '../item_actions.dart';
@@ -18,6 +19,23 @@ String? itemSource(Item item) {
   };
   for (final tag in item.tags) {
     if (names[tag] case final name?) return 'via $name';
+  }
+  return null;
+}
+
+/// Tag métier Notion (Réunion, Suivi…) s'il n'est pas déjà le contexte.
+String? metierTag(Item item) {
+  const known = {
+    'réunion': 'Réunion',
+    'reunion': 'Réunion',
+    'appel': 'Appel',
+    'suivi': 'Suivi',
+    'autre': 'Autre',
+  };
+  for (final tag in item.tags) {
+    if (known[tag.toLowerCase()] case final label?) {
+      if (item.context != label) return label;
+    }
   }
   return null;
 }
@@ -41,7 +59,14 @@ class FocusCard extends StatelessWidget {
     final theme = Theme.of(context);
     final when = itemWhen(item, now);
     final overdue = when?.startsWith('En retard') ?? false;
-    final title = item.content.trim().split('\n').first;
+    final fullTitle = item.content.trim().split('\n').first;
+    final split = splitActionTitle(item.content);
+    // Verbe en pastille seulement si le titre reste lisible sans lui
+    // (todos Grok « Répondre à X — … »), pas pour « Appeler le médecin ».
+    final showVerb =
+        split.verb != null &&
+        split.title.length >= 8 &&
+        split.title != fullTitle;
     final meta = <InlineSpan>[];
     void add(String text, [Color? color]) {
       if (meta.isNotEmpty) meta.add(const TextSpan(text: ' · '));
@@ -58,9 +83,11 @@ class FocusCard extends StatelessWidget {
       add(overdue ? when.toLowerCase() : when, overdue ? p.coral : null);
     }
     if (item.status == ItemStatus.doing) add('en cours', p.blue);
+    if (item.context != null) add(item.context!);
+    if (metierTag(item) case final m?) add(m);
     if (itemSource(item) case final source?) add(source);
-    if (meta.isEmpty && item.context != null) add(item.context!);
 
+    final badge = statusBadgeFor(item);
     final radius = BorderRadius.circular(20);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -92,7 +119,9 @@ class FocusCard extends StatelessWidget {
           color: p.card,
           shape: RoundedRectangleBorder(
             borderRadius: radius,
-            side: BorderSide(color: p.line),
+            side: BorderSide(
+              color: badge == 'Bloqué' ? p.coral.withValues(alpha: 0.55) : p.line,
+            ),
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
@@ -101,7 +130,6 @@ class FocusCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Liseré de priorité, arrondi, en retrait du bord.
                   Container(
                     width: 4,
                     margin: const EdgeInsets.only(
@@ -133,8 +161,25 @@ class FocusCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          if (showVerb || badge != null) ...[
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                if (showVerb)
+                                  _MiniChip(split.verb!, p.sand, p),
+                                if (badge != null)
+                                  _MiniChip(
+                                    badge,
+                                    badge == 'Bloqué' ? p.coral : p.blue,
+                                    p,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                          ],
                           Text(
-                            title,
+                            showVerb ? split.title : fullTitle,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.titleMedium?.copyWith(
@@ -188,6 +233,30 @@ class FocusCard extends StatelessWidget {
           style: TextStyle(color: color, fontWeight: FontWeight.w600),
         ),
       ],
+    ),
+  );
+}
+
+class _MiniChip extends StatelessWidget {
+  const _MiniChip(this.text, this.color, this.p);
+  final String text;
+  final Color color;
+  final Palette p;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.16),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Text(
+      text,
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: color,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.2,
+      ),
     ),
   );
 }

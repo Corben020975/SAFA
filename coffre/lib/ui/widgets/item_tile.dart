@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/life_domain.dart';
 import '../../data/database.dart';
 import '../../data/enums.dart';
 import '../item_actions.dart';
@@ -24,14 +25,25 @@ class ItemTile extends StatelessWidget {
     final scheme = theme.colorScheme;
     final p = Palette.of(context);
     final done = item.status == ItemStatus.done;
-    final title = item.content.trim().split('\n').first;
+    final fullTitle = item.content.trim().split('\n').first;
+    final split = splitActionTitle(item.content);
+    final showVerb =
+        split.verb != null &&
+        split.title.length >= 8 &&
+        split.title != fullTitle;
+    final badge = statusBadgeFor(item);
     final when = itemWhen(item, DateTime.now());
     final overdue = when?.startsWith('En retard') ?? false;
     final accent = priorityColor(item.priority, scheme);
     final meta = [
+      if (showVerb) split.verb!,
+      if (badge != null) badge,
       itemMeta(item),
       if (item.status == ItemStatus.doing) 'En cours',
-      ...item.tags.take(2).map((t) => '#$t'),
+      ...item.tags
+          .where((t) => t != 'notion' && t != 'bloqué' && t != 'bloque')
+          .take(2)
+          .map((t) => '#$t'),
     ].join(' · ');
 
     return InkWell(
@@ -60,7 +72,7 @@ class ItemTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      showVerb ? split.title : fullTitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyLarge?.copyWith(

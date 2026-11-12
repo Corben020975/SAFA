@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="coffre_background">#101517</color>
-    <color name="ic_launcher_background">#18231F</color>
-    <color name="ic_launcher_foreground">#8FC1B1</color>
-    <color name="widget_background">#E61A2421</color>
-    <color name="widget_button">#FF26352F</color>
-    <color name="widget_text">#FFE8F3EF</color>
+    <color name="coffre_background">#0A0908</color>
+    <color name="ic_launcher_background">#1A1410</color>
+    <color name="ic_launcher_foreground">#D4A574</color>
+    <color name="widget_background">#E6161311</color>
+    <color name="widget_button">#FF2C261F</color>
+    <color name="widget_text">#FFF4EEE6</color>
 </resources>

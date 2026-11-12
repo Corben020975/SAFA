@@ -662,6 +662,7 @@ void main() {
         );
         expect(suite.priority, ItemPriority.high);
         expect(suite.tags, ['notion', 'bloqué', 'suivi']);
+        expect(suite.context, 'Travail'); // Suivi (Grok) → Travail
         expect(first.added.last.status, ItemStatus.doing);
 
         // Passée à « Fait » dans Notion → fermée dans Coffre.

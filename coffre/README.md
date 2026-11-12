@@ -3,8 +3,9 @@
 App Android personnelle, privée, hors-ligne par défaut : idées, tâches, notes et rappels au même endroit.
 Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrées sur le téléphone.
 
-- **Jour** : ta journée en une frise (rendez-vous, rappels, créneaux libres, repère « maintenant ») et **les 3 du jour** : 3 priorités choisies le matin (ou suggérées : retards, priorité haute, échéance). Le reste attend dans deux tuiles. Notification « Tes 3 priorités » à 7 h 30.
-- **Flux** : tout le contenu, avec filtres, recherche, tri et gestes de balayage.
+- **Jour** : ta journée en une frise (rendez-vous, rappels, créneaux libres, repère « maintenant ») et **les 3 du jour** : 3 priorités choisies le matin (ou suggérées : retards, priorité haute, échéance). Filtre **Pro / Perso / Tout** (Grokbot → Pro). Le reste attend dans deux tuiles. Notification « Tes 3 priorités » à 7 h 30.
+- **Flux** : tout le contenu, avec le même filtre Pro/Perso, plus Inbox / type / recherche / tri et gestes de balayage.
+- **Thème** : fond noir, accents ambre et terracotta (clair crème en option).
 - **Barre de capture** toujours en bas : tu écris ou dictes, Coffre devine le type, la date, la priorité
   et le contexte (Travail, Santé, Admin…), tu relis l'aperçu, tu envoies. Le texte d'origine est gardé.
 - **Plus tard** sur chaque carte, **pré-alerte** 1 h 30 avant un rendez-vous, report 5/15/60 min depuis la notification.
@@ -174,7 +175,7 @@ Avant chaque envoi, Coffre masque les noms précédés d'une civilité (Mme, M.,
 3. *Réglages › Notion › Jeton d'intégration* : coller le jeton, puis *Base de destination*.
 4. Dans un élément : *Envoyer vers Notion* (titre, date du rappel si la base a une colonne date, texte complet).
 5. **Import (Grokbot…)** : *Réglages › Notion › Base à importer*. La base doit aussi être partagée avec l'intégration (••• › Connexions).
-   - À chaque ouverture de Coffre, les nouvelles tâches arrivent dans l'Inbox : titre, notes et contenu de la page, échéance → rappel (9 h sans heure), P1/P2/P3 → priorité, listes (Contexte, Domaine…) → tags, Bloqué / Délégué → tags.
+   - À chaque ouverture de Coffre, les nouvelles tâches arrivent dans l'Inbox : titre, notes et contenu de la page, échéance → rappel (9 h sans heure), P1/P2/P3 → priorité, listes (Contexte, Domaine…) → tags **et** mapping vers le contexte Coffre (Réunion/Appel/Suivi → Travail, Admin → Admin…), Bloqué / Délégué → badges.
    - Une tâche passée à « Fait » dans Notion se ferme dans Coffre ; « Fait » dans Coffre la passe à « Fait » dans Notion (après le délai d'annulation).
    - Sans doublon : le lien de la page est gardé.
    - **Import programmé à 7 h 30 et 13 h**, même app fermée : notification s'il y a de nouvelles tâches. Option **Brief IA** (désactivée par défaut) : tes priorités en 3 lignes dans la même notification, rédigées par Gemini ou Claude (tâches ouvertes envoyées, noms masqués).

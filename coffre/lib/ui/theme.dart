@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../data/enums.dart';
 
-/// Palette calme. Contrastes vérifiés (WCAG AA) : texte ≥ 7:1 sur le fond sombre.
+/// Palette chaude sur fond noir. Contrastes vérifiés (WCAG AA) sur le thème sombre.
 class Palette {
   const Palette({
     required this.bg,
@@ -22,32 +22,34 @@ class Palette {
   final Color bg, card, field, line, ink, muted, faint;
   final Color sage, blue, sand, coral;
 
+  /// Fond quasi noir, accents ambre / terracotta / crème.
   static const dark = Palette(
-    bg: Color(0xFF101517),
-    card: Color(0xFF171D20),
-    field: Color(0xFF1E262A),
-    line: Color(0xFF263034),
-    ink: Color(0xFFE6EAE8),
-    muted: Color(0xFFA0ABAD),
-    faint: Color(0xFF7B878A),
-    sage: Color(0xFF8FC1B1),
-    blue: Color(0xFF9DB7D0),
-    sand: Color(0xFFD9C293),
-    coral: Color(0xFFE8A193),
+    bg: Color(0xFF0A0908),
+    card: Color(0xFF161311),
+    field: Color(0xFF1F1A16),
+    line: Color(0xFF2C261F),
+    ink: Color(0xFFF4EEE6),
+    muted: Color(0xFFB9A99A),
+    faint: Color(0xFF8A7B6C),
+    sage: Color(0xFFD4A574), // ambre chaud (primaire)
+    blue: Color(0xFFC4956A), // bronze
+    sand: Color(0xFFE8C07A), // or doux
+    coral: Color(0xFFE07A5F), // terracotta
   );
 
+  /// Clair secondaire : crème chaude, pas blanc froid.
   static const light = Palette(
-    bg: Color(0xFFF3F2EE),
-    card: Color(0xFFFFFFFF),
-    field: Color(0xFFEAE8E2),
-    line: Color(0xFFDDDAD2),
-    ink: Color(0xFF1B211F),
-    muted: Color(0xFF56615E),
-    faint: Color(0xFF7A8481),
-    sage: Color(0xFF2E6B5F),
-    blue: Color(0xFF3A5F82),
-    sand: Color(0xFF7C5E22),
-    coral: Color(0xFFA94F43),
+    bg: Color(0xFFF6F0E8),
+    card: Color(0xFFFFFBF6),
+    field: Color(0xFFEDE4D8),
+    line: Color(0xFFD9CFC2),
+    ink: Color(0xFF1A1410),
+    muted: Color(0xFF6B5C4E),
+    faint: Color(0xFF8F7F6E),
+    sage: Color(0xFF9A6B3C),
+    blue: Color(0xFF8A5A38),
+    sand: Color(0xFFA67C2D),
+    coral: Color(0xFFB54E3A),
   );
 
   static Palette of(BuildContext context) =>
@@ -82,24 +84,24 @@ ThemeData buildTheme(Brightness brightness) {
   final scheme = ColorScheme(
     brightness: brightness,
     primary: p.sage,
-    onPrimary: dark ? const Color(0xFF0E1A16) : Colors.white,
-    primaryContainer: dark ? const Color(0xFF223A34) : const Color(0xFFD5E9E2),
+    onPrimary: dark ? const Color(0xFF1A1208) : Colors.white,
+    primaryContainer: dark ? const Color(0xFF3A2A1A) : const Color(0xFFF0DFC8),
     onPrimaryContainer: dark
-        ? const Color(0xFFCFE7DF)
-        : const Color(0xFF123A32),
+        ? const Color(0xFFF5E2C8)
+        : const Color(0xFF3A2410),
     secondary: p.blue,
-    onSecondary: dark ? const Color(0xFF0F1A24) : Colors.white,
+    onSecondary: dark ? const Color(0xFF1A1008) : Colors.white,
     secondaryContainer: dark
-        ? const Color(0xFF223140)
-        : const Color(0xFFDCE7F1),
+        ? const Color(0xFF3A281C)
+        : const Color(0xFFEED9C8),
     onSecondaryContainer: dark
-        ? const Color(0xFFD6E3EF)
-        : const Color(0xFF1B3550),
+        ? const Color(0xFFF0DCC8)
+        : const Color(0xFF3A2010),
     tertiary: p.sand,
     onTertiary: dark ? const Color(0xFF241B07) : Colors.white,
-    tertiaryContainer: dark ? const Color(0xFF3A3121) : const Color(0xFFF1E6CC),
+    tertiaryContainer: dark ? const Color(0xFF3A3121) : const Color(0xFFF5E8CC),
     onTertiaryContainer: dark
-        ? const Color(0xFFF1E3C4)
+        ? const Color(0xFFF5E8C8)
         : const Color(0xFF3D2E0E),
     error: p.coral,
     onError: dark ? const Color(0xFF2B0F0A) : Colors.white,
@@ -108,18 +110,18 @@ ThemeData buildTheme(Brightness brightness) {
     surface: p.bg,
     onSurface: p.ink,
     onSurfaceVariant: p.muted,
-    surfaceContainerLowest: dark ? const Color(0xFF0C1012) : Colors.white,
+    surfaceContainerLowest: dark ? const Color(0xFF050403) : Colors.white,
     surfaceContainerLow: p.card,
     surfaceContainer: p.card,
     surfaceContainerHigh: p.field,
     surfaceContainerHighest: dark
-        ? const Color(0xFF252E33)
-        : const Color(0xFFE2DFD8),
-    outline: dark ? const Color(0xFF3B474C) : const Color(0xFFB9B5AC),
+        ? const Color(0xFF2A231C)
+        : const Color(0xFFE6DDD2),
+    outline: dark ? const Color(0xFF4A3F34) : const Color(0xFFB9AFA2),
     outlineVariant: p.line,
     inverseSurface: p.ink,
     onInverseSurface: p.bg,
-    inversePrimary: dark ? const Color(0xFF2E6B5F) : const Color(0xFF8FC1B1),
+    inversePrimary: dark ? const Color(0xFF9A6B3C) : const Color(0xFFD4A574),
     shadow: Colors.black,
     scrim: Colors.black,
     surfaceTint: Colors.transparent,

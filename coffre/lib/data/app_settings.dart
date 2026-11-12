@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import '../core/life_domain.dart';
 import '../core/reminder_defaults.dart';
 import 'database.dart';
 import 'enums.dart';
@@ -64,6 +65,9 @@ class AppSettings extends ChangeNotifier {
   /// Brief IA joint à cette notification (texte envoyé à l'IA : opt-in).
   bool aiDigest = false;
 
+  /// Filtre Jour / Flux : Tout, Pro (Grok / SAFA) ou Perso.
+  DayMode dayMode = DayMode.all;
+
   Future<void> load() async {
     final p = await _db.allPrefs();
     themeMode = ThemeMode.values.asNameMap()[p['theme']] ?? ThemeMode.dark;
@@ -114,6 +118,7 @@ class AppSettings extends ChangeNotifier {
         .whereType<int>()
         .toList();
     aiDigest = p['aiDigest'] == 'true';
+    dayMode = DayMode.values.asNameMap()[p['dayMode']] ?? DayMode.all;
     _applyDefaults();
   }
 
@@ -204,6 +209,8 @@ class AppSettings extends ChangeNotifier {
       _set(() => notionScheduled = value, 'notionScheduled', '$value');
   Future<void> setAiDigest(bool value) =>
       _set(() => aiDigest = value, 'aiDigest', '$value');
+  Future<void> setDayMode(DayMode value) =>
+      _set(() => dayMode = value, 'dayMode', value.name);
   Future<void> setNotionSyncDone(bool value) =>
       _set(() => notionSyncDone = value, 'notionSyncDone', '$value');
 

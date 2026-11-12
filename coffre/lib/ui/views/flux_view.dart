@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_services.dart';
+import '../../core/life_domain.dart';
 import '../../data/database.dart';
 import '../../data/enums.dart';
 import '../item_actions.dart';
@@ -67,7 +68,7 @@ class _FluxViewState extends State<FluxView> {
               padding: const EdgeInsets.fromLTRB(22, 12, 8, 0),
               child: Row(
                 children: [
-                  Text('Flux', style: displayStyle(context, 34)),
+                  Text('Flux', style: displayStyle(context, 34, color: p.sage)),
                   const Spacer(),
                   PopupMenuButton<SortMode>(
                     tooltip: 'Trier',
@@ -93,6 +94,26 @@ class _FluxViewState extends State<FluxView> {
                     icon: const Icon(Icons.settings_outlined),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ),
+        ListenableBuilder(
+          listenable: _s.settings,
+          builder: (context, _) => SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: SegmentedButton<DayMode>(
+                segments: [
+                  for (final m in DayMode.values)
+                    ButtonSegment(value: m, label: Text(m.label)),
+                ],
+                selected: {_s.settings.dayMode},
+                onSelectionChanged: (set) => _s.settings.setDayMode(set.first),
+                style: ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  side: WidgetStatePropertyAll(BorderSide(color: p.line)),
+                ),
               ),
             ),
           ),
@@ -126,33 +147,44 @@ class _FluxViewState extends State<FluxView> {
           ),
         ),
         if (!_searching) SliverToBoxAdapter(child: _filterBar()),
-        StreamBuilder<List<Item>>(
-          stream: _items,
-          builder: (context, snapshot) {
-            final items = (snapshot.data ?? const <Item>[])
-                .where((i) => !_hidden.contains(i.id))
-                .toList();
-            if (!snapshot.hasData) {
-              return const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
+        ListenableBuilder(
+          listenable: _s.settings,
+          builder: (context, _) => StreamBuilder<List<Item>>(
+            stream: _items,
+            builder: (context, snapshot) {
+              final mode = _s.settings.dayMode;
+              final items = filterByDayMode(
+                (snapshot.data ?? const <Item>[])
+                    .where((i) => !_hidden.contains(i.id))
+                    .toList(),
+                mode,
               );
-            }
-            if (items.isEmpty) {
-              return SliverFillRemaining(
-                hasScrollBody: false,
-                child: _EmptyState(filter: _filter, searching: _searching),
+              if (!snapshot.hasData) {
+                return const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (items.isEmpty) {
+                return SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _EmptyState(
+                    filter: _filter,
+                    searching: _searching,
+                    mode: mode,
+                  ),
+                );
+              }
+              return SliverPadding(
+                padding: const EdgeInsets.only(top: 6),
+                sliver: SliverList.separated(
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) =>
+                      Divider(indent: 60, endIndent: 18, color: p.line),
+                  itemBuilder: (context, index) => _row(items[index]),
+                ),
               );
-            }
-            return SliverPadding(
-              padding: const EdgeInsets.only(top: 6),
-              sliver: SliverList.separated(
-                itemCount: items.length,
-                separatorBuilder: (_, _) =>
-                    Divider(indent: 60, endIndent: 18, color: p.line),
-                itemBuilder: (context, index) => _row(items[index]),
-              ),
-            );
-          },
+            },
+          ),
         ),
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
@@ -265,22 +297,31 @@ class _FluxViewState extends State<FluxView> {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.filter, required this.searching});
+  const _EmptyState({
+    required this.filter,
+    required this.searching,
+    required this.mode,
+  });
   final InboxFilter filter;
   final bool searching;
+  final DayMode mode;
 
   @override
   Widget build(BuildContext context) {
+    final scope = mode == DayMode.all ? '' : ' (${mode.label})';
     final (icon, text) = searching
-        ? (Icons.search_off, 'Aucun résultat.')
+        ? (Icons.search_off, 'Aucun résultat$scope.')
         : switch (filter) {
-            InboxFilter.inbox => (Icons.inbox_outlined, 'Inbox vide.'),
-            InboxFilter.reminders => (Icons.alarm_off, 'Aucun rappel à venir.'),
+            InboxFilter.inbox => (Icons.inbox_outlined, 'Inbox vide$scope.'),
+            InboxFilter.reminders => (
+              Icons.alarm_off,
+              'Aucun rappel à venir$scope.',
+            ),
             InboxFilter.done => (
               Icons.check_circle_outline,
-              'Rien de terminé pour l\'instant.',
+              'Rien de terminé$scope.',
             ),
-            _ => (Icons.folder_open, 'Rien ici pour l\'instant.'),
+            _ => (Icons.folder_open, 'Rien ici$scope.'),
           };
     final p = Palette.of(context);
     return Padding(

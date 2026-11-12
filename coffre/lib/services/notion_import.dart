@@ -1,4 +1,5 @@
 import '../core/app_services.dart';
+import '../core/life_domain.dart';
 import '../data/database.dart';
 import '../data/enums.dart';
 import 'notion_service.dart';
@@ -64,7 +65,9 @@ Future<NotionImportResult> importNotionTasks(
         tags: ['notion', ...task.tags],
         remindAt: task.due,
         status: task.doing ? ItemStatus.doing : ItemStatus.todo,
-        context: context,
+        // Grokbot envoie Contexte (Réunion, Suivi…) en tags : on le mappe
+        // vers Travail / Admin… ; le réglage reste un repli.
+        context: mapNotionTagsToContext(task.tags) ?? context,
         notionUrl: task.url,
       ),
     );
