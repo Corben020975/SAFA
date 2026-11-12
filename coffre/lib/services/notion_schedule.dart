@@ -14,13 +14,15 @@ import 'ai/ai_assistant.dart';
 import 'ai/claude_client.dart';
 import 'ai/gemini_client.dart';
 import 'day_focus.dart';
+import 'mail_triage.dart';
 import 'notification_service.dart';
 import 'notion_import.dart';
 import 'notion_service.dart';
 import 'secret_store.dart';
 
 /// Rendez-vous quotidiens, même app fermée (AlarmManager) : à 7 h 30
-/// « Tes 3 priorités » ; à 7 h 30 et 13 h, import Notion si activé.
+/// « Tes 3 priorités » ; à 7 h 30 et 13 h, import Notion et tri des mails
+/// perso si activés.
 const kNotionSyncTimes = [(7, 30), (13, 0)];
 const _alarmId = 7301;
 
@@ -38,11 +40,14 @@ DateTime nextNotionSync(DateTime now) {
 
 bool _notionOn(AppSettings s) => s.notionScheduled && s.notionImport != null;
 
+bool _mailOn(AppSettings s) =>
+    s.mailTriage && s.gmailAddress != null && s.consentFor(AiProvider.claude);
+
 /// (Re)programme le prochain créneau, ou l'annule si tout est désactivé.
 Future<void> scheduleNotionSync(AppSettings settings) async {
   if (!Platform.isAndroid) return;
   try {
-    if (!settings.morningFocus && !_notionOn(settings)) {
+    if (!settings.morningFocus && !_notionOn(settings) && !_mailOn(settings)) {
       await AndroidAlarmManager.cancel(_alarmId);
       return;
     }
@@ -76,10 +81,31 @@ Future<void> notionSyncCallback() async {
     final morning = now.hour < 11;
     final target = NotionTarget.fromMap(settings.notionImport);
     final notionOn = settings.notionScheduled && target != null;
-    if (!notionOn && !(morning && settings.morningFocus)) return;
+    final mailOn = _mailOn(settings);
+    if (!notionOn && !mailOn && !(morning && settings.morningFocus)) return;
     final secrets = SecretStore();
     final notifications = NotificationService();
     await notifications.init();
+    final ai = AiAssistant(
+      ClaudeClient(() => secrets.read(SecretStore.aiKey)),
+      GeminiClient(() => secrets.read(SecretStore.geminiKey)),
+      settings,
+    );
+
+    var fromMail = const <Item>[];
+    if (mailOn) {
+      try {
+        fromMail = (await runMailTriage(
+          db: db,
+          settings: settings,
+          secrets: secrets,
+          ai: ai,
+          notifications: notifications,
+        )).added;
+      } catch (_) {
+        fromMail = const []; // hors ligne : on réessaiera au prochain créneau
+      }
+    }
 
     NotionImportResult? result;
     if (notionOn) {
@@ -100,11 +126,6 @@ Future<void> notionSyncCallback() async {
 
     String? brief;
     if (settings.aiDigest && settings.consentFor(settings.aiProvider)) {
-      final ai = AiAssistant(
-        ClaudeClient(() => secrets.read(SecretStore.aiKey)),
-        GeminiClient(() => secrets.read(SecretStore.geminiKey)),
-        settings,
-      );
       final open = (await db.allItems())
           .where((i) => i.status != ItemStatus.done)
           .toList();
@@ -117,6 +138,14 @@ Future<void> notionSyncCallback() async {
 
     final added = result?.added ?? const [];
     String line(Item i) => i.content.split('\n').first;
+    final mailLine = fromMail.isEmpty
+        ? null
+        : [
+            fromMail.length == 1
+                ? '+ 1 rappel tiré de tes mails'
+                : '+ ${fromMail.length} rappels tirés de tes mails',
+            ...fromMail.take(3).map((i) => '• ${line(i)}'),
+          ].join('\n');
 
     // 7 h 30 : « Tes 3 priorités », choisies pour la journée.
     if (morning && settings.morningFocus) {
@@ -124,7 +153,10 @@ Future<void> notionSyncCallback() async {
           .where((i) => i.status != ItemStatus.done)
           .toList();
       final focus = await DayFocus.ensure(settings, open, now);
-      if (focus.isNotEmpty || brief != null || added.isNotEmpty) {
+      if (focus.isNotEmpty ||
+          brief != null ||
+          added.isNotEmpty ||
+          mailLine != null) {
         await notifications.showDigest(
           focus.length == 1
               ? 'Ta priorité du jour'
@@ -140,21 +172,24 @@ Future<void> notionSyncCallback() async {
               added.length == 1
                   ? '+ 1 nouvelle tâche depuis Notion'
                   : '+ ${added.length} nouvelles tâches depuis Notion',
+            ?mailLine,
           ].join('\n\n'),
         );
       }
       return;
     }
 
-    if (added.isEmpty && brief == null) return;
+    if (added.isEmpty && brief == null && mailLine == null) return;
     final titles = added.take(4).map((i) => '• ${line(i)}').join('\n');
     await notifications.showDigest(
       added.isEmpty
-          ? 'Ton point Coffre'
+          ? (mailLine != null && brief == null
+                ? 'Tes mails perso'
+                : 'Ton point Coffre')
           : added.length == 1
           ? '1 nouvelle tâche depuis Notion'
           : '${added.length} nouvelles tâches depuis Notion',
-      [?brief, if (titles.isNotEmpty) titles].join('\n\n'),
+      [?brief, if (titles.isNotEmpty) titles, ?mailLine].join('\n\n'),
     );
   } finally {
     await scheduleNotionSync(settings);

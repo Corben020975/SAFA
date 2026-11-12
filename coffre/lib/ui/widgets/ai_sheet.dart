@@ -10,9 +10,9 @@ import '../../services/secret_store.dart';
 import '../theme.dart';
 
 /// Vérifie clé + accord avant tout envoi. Rien ne part sans ce passage.
-Future<bool> ensureAiReady(BuildContext context) async {
+Future<bool> ensureAiReady(BuildContext context, {AiProvider? only}) async {
   final s = AppScope.of(context);
-  final provider = s.settings.aiProvider;
+  final provider = only ?? s.settings.aiProvider;
   final keyName = provider == AiProvider.gemini
       ? SecretStore.geminiKey
       : SecretStore.aiKey;

@@ -24,7 +24,14 @@ const kProNotionTags = {
   'bloque',
 };
 
-const kPersoNotionTags = {'perso', 'santé', 'sante', 'privé', 'prive'};
+const kPersoNotionTags = {
+  'perso',
+  'santé',
+  'sante',
+  'privé',
+  'prive',
+  'gmail', // mails perso
+};
 
 /// Contextes Coffre considérés comme « Pro ».
 const kProContexts = {'Travail', 'Admin', 'Déplacement'};

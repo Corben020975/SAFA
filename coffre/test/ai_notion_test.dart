@@ -40,6 +40,7 @@ class _FakeEngine implements AiEngine {
   String? system;
   String? prompt;
   String? effort;
+  bool light = false;
   int calls = 0;
 
   @override
@@ -47,8 +48,10 @@ class _FakeEngine implements AiEngine {
     required String system,
     required String prompt,
     String effort = 'low',
+    bool light = false,
   }) async {
     calls++;
+    this.light = light;
     this.system = system;
     this.prompt = prompt;
     this.effort = effort;

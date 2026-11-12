@@ -123,18 +123,53 @@ class AiAssistant {
     'low',
   );
 
+  /// Tri des mails perso : toujours Claude Haiku (économique), noms masqués.
+  Future<String> mailTriage(String mails, DateTime now) => _send(
+    'Tu tries les mails personnels de l\'utilisateur (Belgique). Repère uniquement ce '
+        'qui demande une action de sa part : facture ou paiement à faire '
+        '(type « facture »), rendez-vous (type « rdv »), document à renvoyer ou '
+        'démarche avec échéance (type « action »). Ignore publicités, '
+        'newsletters, confirmations sans action, paiements déjà effectués et '
+        'notifications automatiques.\n'
+        'Réponds UNIQUEMENT par un tableau JSON, [] si rien : '
+        '[{"mail": 1, "type": "facture", "titre": "Payer facture Engie 84,20 €", '
+        '"date": "2026-11-20", "heure": null}]. '
+        '« titre » : verbe à l\'infinitif, 10 mots max, avec le montant pour une '
+        'facture et le lieu pour un rendez-vous. « date » : AAAA-MM-JJ (échéance '
+        'ou jour du rendez-vous) ou null. « heure » : HH:MM ou null. '
+        'Les marqueurs comme [PERSONNE 1] remplacent des données masquées : '
+        'recopie-les tels quels.',
+    'Nous sommes le ${formatLong(now)}.\n\n$mails',
+    'low',
+    engine: _claude,
+    light: true,
+  );
+
   Future<String> ask(String question) =>
       _send(_base, question.trim(), AiAction.ask.effort);
 
-  Future<String> _send(String system, String content, String effort) async {
+  Future<String> _send(
+    String system,
+    String content,
+    String effort, {
+    AiEngine? engine,
+    bool light = false,
+  }) async {
+    final target = engine ?? _engine;
     if (!_settings.aiMask) {
-      return _engine.complete(system: system, prompt: content, effort: effort);
+      return target.complete(
+        system: system,
+        prompt: content,
+        effort: effort,
+        light: light,
+      );
     }
     final p = Pseudonymizer();
-    final answer = await _engine.complete(
+    final answer = await target.complete(
       system: system,
       prompt: p.mask(content),
       effort: effort,
+      light: light,
     );
     return p.unmask(answer);
   }

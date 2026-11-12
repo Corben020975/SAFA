@@ -65,6 +65,15 @@ class AppSettings extends ChangeNotifier {
   /// Brief IA joint à cette notification (texte envoyé à l'IA : opt-in).
   bool aiDigest = false;
 
+  /// Mails perso : adresse Gmail lue en IMAP (le mot de passe d'application
+  /// reste dans le Keystore), tri par Claude à 7 h 30 et 13 h.
+  String? gmailAddress;
+  bool mailTriage = false;
+
+  /// Dernier mail déjà trié (UID IMAP) et validité de ces UID.
+  int? mailLastUid;
+  int? mailUidValidity;
+
   /// Filtre Jour / Flux : Tout, Pro (Grok / SAFA) ou Perso.
   DayMode dayMode = DayMode.all;
 
@@ -119,6 +128,11 @@ class AppSettings extends ChangeNotifier {
         .toList();
     aiDigest = p['aiDigest'] == 'true';
     dayMode = DayMode.values.asNameMap()[p['dayMode']] ?? DayMode.all;
+    final gmail = p['gmailAddress'];
+    gmailAddress = (gmail ?? '').isEmpty ? null : gmail;
+    mailTriage = p['mailTriage'] == 'true';
+    mailLastUid = int.tryParse(p['mailLastUid'] ?? '');
+    mailUidValidity = int.tryParse(p['mailUidValidity'] ?? '');
     _applyDefaults();
   }
 
@@ -209,6 +223,26 @@ class AppSettings extends ChangeNotifier {
       _set(() => notionScheduled = value, 'notionScheduled', '$value');
   Future<void> setAiDigest(bool value) =>
       _set(() => aiDigest = value, 'aiDigest', '$value');
+  Future<void> setGmailAddress(String? value) {
+    final clean = value?.trim().toLowerCase();
+    return _set(
+      () => gmailAddress = (clean ?? '').isEmpty ? null : clean,
+      'gmailAddress',
+      clean ?? '',
+    );
+  }
+
+  Future<void> setMailTriage(bool value) =>
+      _set(() => mailTriage = value, 'mailTriage', '$value');
+
+  /// Mémorise le dernier mail trié (sans notifier l'interface).
+  Future<void> setMailCursor(int uid, int? validity) async {
+    mailLastUid = uid;
+    mailUidValidity = validity;
+    await _db.setPref('mailLastUid', '$uid');
+    await _db.setPref('mailUidValidity', '${validity ?? ''}');
+  }
+
   Future<void> setDayMode(DayMode value) =>
       _set(() => dayMode = value, 'dayMode', value.name);
   Future<void> setNotionSyncDone(bool value) =>

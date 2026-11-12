@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_services.dart';
 import '../../core/reminder_defaults.dart';
 import '../../data/app_settings.dart';
+import '../../services/mail_triage.dart';
 import '../../services/notion_import.dart';
 import '../../services/notion_schedule.dart';
 import '../../services/notion_service.dart';
@@ -591,6 +592,170 @@ class _NotionSettingsSectionState extends State<NotionSettingsSection> {
               'Import : titre, notes et contenu de la page, échéance → rappel, P1/P2/P3 → priorité, '
               'listes (Contexte, Domaine…) → tags, statuts Bloqué / Délégué → tags. '
               'Une tâche passée à « Fait » dans Notion se ferme aussi dans Coffre.',
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Gmail perso lu en IMAP (mot de passe d'application), trié par Claude Haiku.
+class MailSettingsSection extends StatefulWidget {
+  const MailSettingsSection({super.key});
+
+  @override
+  State<MailSettingsSection> createState() => _MailSettingsSectionState();
+}
+
+class _MailSettingsSectionState extends State<MailSettingsSection> {
+  late final AppServices _s = AppScope.of(context);
+  bool? _hasPassword;
+  bool _running = false;
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final has = await _s.secrets.has(SecretStore.gmailPassword);
+    if (mounted) setState(() => _hasPassword = has);
+  }
+
+  Future<void> _editAddress() async {
+    final controller = TextEditingController(text: _s.settings.gmailAddress);
+    final value = await showDialog<String>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('Adresse Gmail perso'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.emailAddress,
+          autocorrect: false,
+          decoration: const InputDecoration(hintText: 'prenom.nom@gmail.com'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(d),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(d, controller.text),
+            child: const Text('Enregistrer'),
+          ),
+        ],
+      ),
+    );
+    if (value != null) await _s.settings.setGmailAddress(value);
+  }
+
+  Future<void> _editPassword() async {
+    final value = await _askSecret(
+      context,
+      title: 'Mot de passe d\'application',
+      hint: 'xxxx xxxx xxxx xxxx',
+      help:
+          '1. myaccount.google.com/apppasswords (validation en deux étapes requise).\n'
+          '2. Nom : Coffre › Créer › copie le code de 16 lettres.\n'
+          'Il reste chiffré sur ce téléphone et n\'est jamais exporté.',
+    );
+    if (value == null) return;
+    await _s.secrets.write(SecretStore.gmailPassword, value);
+    await _refresh();
+  }
+
+  Future<void> _toggle(bool on) async {
+    if (on && !await ensureAiReady(context, only: AiProvider.claude)) {
+      return;
+    }
+    await _s.settings.setMailTriage(on);
+    await scheduleNotionSync(_s.settings);
+    if (on) await _runNow();
+  }
+
+  Future<void> _runNow() async {
+    setState(() => _running = true);
+    try {
+      final result = await runMailTriage(
+        db: _s.db,
+        settings: _s.settings,
+        secrets: _s.secrets,
+        ai: _s.ai,
+        notifications: _s.notifications,
+      );
+      await flagRdvOutsideAgenda(_s);
+      final n = result.added.length;
+      if (mounted) {
+        _snack(
+          context,
+          '${result.read} mail${result.read > 1 ? 's' : ''} lu${result.read > 1 ? 's' : ''} · '
+          '${n == 0 ? 'rien à faire' : '$n rappel${n > 1 ? 's' : ''} ajouté${n > 1 ? 's' : ''} (Perso)'}',
+        );
+      }
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    } finally {
+      if (mounted) setState(() => _running = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = _s.settings;
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) {
+        final ready = settings.gmailAddress != null && _hasPassword == true;
+        return Column(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.alternate_email),
+              title: const Text('Adresse Gmail'),
+              subtitle: Text(settings.gmailAddress ?? 'À ajouter'),
+              onTap: _editAddress,
+            ),
+            ListTile(
+              leading: const Icon(Icons.password),
+              title: const Text('Mot de passe d\'application'),
+              subtitle: Text(
+                _hasPassword == null
+                    ? '…'
+                    : (_hasPassword! ? 'Configuré' : 'À ajouter'),
+              ),
+              onTap: _editPassword,
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.mark_email_unread_outlined),
+              title: const Text('Trier mes mails à 7 h 30 et 13 h'),
+              subtitle: const Text(
+                'Factures, rendez-vous, démarches → rappels côté Perso',
+              ),
+              value: settings.mailTriage,
+              onChanged: ready ? _toggle : null,
+            ),
+            ListTile(
+              enabled: ready && !_running,
+              leading: const Icon(Icons.refresh),
+              title: const Text('Trier maintenant'),
+              trailing: _running
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : null,
+              onTap: ready ? _runNow : null,
+            ),
+            const _Note(
+              'Coffre lit les nouveaux mails de ta boîte de réception sans les marquer comme lus. '
+              'Seuls l\'expéditeur, l\'objet et le début du texte partent vers Claude Haiku '
+              '(noms masqués, quelques centimes par mois sur ta clé API). '
+              'Un rendez-vous absent de ton agenda reçoit le tag « hors agenda ».',
             ),
           ],
         );

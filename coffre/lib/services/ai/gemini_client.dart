@@ -49,6 +49,7 @@ class GeminiClient implements AiEngine {
     required String system,
     required String prompt,
     String effort = 'low',
+    bool light = false,
   }) async {
     final key = await _apiKey();
     if (key == null) {

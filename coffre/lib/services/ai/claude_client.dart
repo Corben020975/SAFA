@@ -24,6 +24,9 @@ class ClaudeClient implements AiEngine {
   final http.Client _client;
 
   static const model = 'claude-opus-5';
+
+  /// Tri des mails : Haiku, plusieurs fois moins cher, largement suffisant.
+  static const lightModel = 'claude-haiku-5-5';
   static final _endpoint = Uri.parse('https://api.anthropic.com/v1/messages');
 
   /// Corps de requête. `fallbacks: "default"` : si les filtres de sécurité
@@ -34,10 +37,12 @@ class ClaudeClient implements AiEngine {
     required String prompt,
     required String effort,
     int maxTokens = 16000,
+    bool light = false,
   }) => {
-    'model': model,
+    'model': light ? lightModel : model,
     'max_tokens': maxTokens,
-    'fallbacks': 'default',
+    // Haiku n'a pas de modèle de repli côté serveur.
+    if (!light) 'fallbacks': 'default',
     'output_config': {'effort': effort},
     'system': system,
     'messages': [
@@ -50,6 +55,7 @@ class ClaudeClient implements AiEngine {
     required String system,
     required String prompt,
     String effort = 'low',
+    bool light = false,
   }) async {
     final key = await _apiKey();
     if (key == null) {
@@ -66,10 +72,15 @@ class ClaudeClient implements AiEngine {
               'content-type': 'application/json',
               'x-api-key': key,
               'anthropic-version': '2023-06-01',
-              'anthropic-beta': 'server-side-fallback-2026-07-01',
+              if (!light) 'anthropic-beta': 'server-side-fallback-2026-07-01',
             },
             body: jsonEncode(
-              buildBody(system: system, prompt: prompt, effort: effort),
+              buildBody(
+                system: system,
+                prompt: prompt,
+                effort: effort,
+                light: light,
+              ),
             ),
           )
           .timeout(const Duration(seconds: 120));

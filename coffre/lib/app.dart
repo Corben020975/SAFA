@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/app_services.dart';
 import 'services/launch_router.dart';
+import 'services/mail_triage.dart';
 import 'services/notion_import.dart';
 import 'ui/screens/capture_screen.dart';
 import 'ui/screens/detail_screen.dart';
@@ -25,6 +26,7 @@ class CoffreApp extends StatefulWidget {
 class _CoffreAppState extends State<CoffreApp> {
   late final AppLifecycleListener _lifecycle;
   late final NotionAutoImport _notionImport = NotionAutoImport(widget.services);
+  late final MailAutoTriage _mailTriage = MailAutoTriage(widget.services);
   final _messenger = GlobalKey<ScaffoldMessengerState>();
   late final String _initialRoute = widget.services.settings.onboardingDone
       ? '/'
@@ -43,11 +45,13 @@ class _CoffreAppState extends State<CoffreApp> {
           TableUpdate.onTable(widget.services.db.items),
         });
         _importFromNotion();
+        _triageMails();
       },
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.router.handleColdStart();
       _importFromNotion();
+      _triageMails();
     });
   }
 
@@ -62,6 +66,21 @@ class _CoffreAppState extends State<CoffreApp> {
           n == 1
               ? '1 nouvelle tâche depuis Notion (Inbox)'
               : '$n nouvelles tâches depuis Notion (Inbox)',
+        ),
+      ),
+    );
+  }
+
+  /// Rappels tirés des mails perso (au plus une fois par heure).
+  Future<void> _triageMails() async {
+    final n = (await _mailTriage.run())?.added.length ?? 0;
+    if (n == 0) return;
+    _messenger.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(
+          n == 1
+              ? '1 rappel tiré de tes mails (Perso)'
+              : '$n rappels tirés de tes mails (Perso)',
         ),
       ),
     );

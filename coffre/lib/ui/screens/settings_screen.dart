@@ -121,6 +121,8 @@ class SettingsScreen extends StatelessWidget {
             const AgendaSettingsSection(),
             const _Header('Notion'),
             const NotionSettingsSection(),
+            const _Header('Mails perso (Gmail)'),
+            const MailSettingsSection(),
             const _Header('Sauvegarde'),
             ListTile(
               leading: const Icon(Icons.save_alt),

@@ -16,6 +16,7 @@ Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrée
   Au choix : **Gemini** (Google, clé gratuite) ou **Claude** (Anthropic, payant à l'usage).
 - **Agenda Google** : rendez-vous du jour dans *Jour*, ajout d'un rappel à l'agenda (via l'agenda du téléphone, sans connexion Google).
 - **Notion** (optionnel) : envoyer un élément dans une base Notion.
+- **Mails perso** (optionnel) : à 7 h 30, 13 h et à l'ouverture, Coffre relit Gmail (IMAP + mot de passe d'application, sans marquer comme lu), fait trier les nouveaux mails par Claude Haiku et crée les rappels côté Perso : factures (la veille de l'échéance), rendez-vous (tag « hors agenda » s'ils manquent dans l'agenda), démarches.
 
 - **Aucun compte, aucun serveur, aucune statistique.** Internet sert uniquement à l'IA et à Notion, quand tu le demandes.
 - **Base chiffrée** (SQLite3 Multiple Ciphers, ChaCha20). La clé est générée au premier lancement et reste dans le Keystore Android.
