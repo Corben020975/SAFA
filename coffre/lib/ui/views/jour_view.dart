@@ -112,7 +112,9 @@ class _JourViewState extends State<JourView> {
     if (_savingFocus) return;
     _savingFocus = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await DayFocus.ensure(_s.settings, open, now);
+      for (final side in FocusSide.values) {
+        await DayFocus.ensure(_s.settings, open, now, side);
+      }
       _savingFocus = false;
     });
   }
@@ -129,12 +131,26 @@ class _JourViewState extends State<JourView> {
           final today = DateTime(now.year, now.month, now.day);
           final tomorrow = DateTime(now.year, now.month, now.day + 1);
 
-          final chosen = DayFocus.chosen(_s.settings, open, now);
-          if (chosen == null && snapshot.hasData && open.isNotEmpty) {
+          final sides = DayFocus.order(now);
+          final chosenBy = {
+            for (final side in sides)
+              side: DayFocus.chosen(_s.settings, open, now, side),
+          };
+          if (chosenBy.values.any((c) => c == null) &&
+              snapshot.hasData &&
+              open.isNotEmpty) {
             _rememberFocus(open, now);
           }
-          final focus = chosen ?? DayFocus.suggest(open, now);
-          final focusIds = {for (final i in focus) i.id};
+          final focusBy = {
+            for (final side in sides)
+              side: chosenBy[side] ?? DayFocus.suggest(open, now, side),
+          };
+          final first = sides.first;
+          final focus = focusBy[first]!;
+          final focusIds = {
+            for (final f in focusBy.values)
+              for (final i in f) i.id,
+          };
           final tasks = open.where((i) => i.kind == ItemKind.task).toList();
           final overdue = tasks
               .where((i) => i.remindAt != null && i.remindAt!.isBefore(now))
@@ -155,10 +171,15 @@ class _JourViewState extends State<JourView> {
           final tomorrowEvents = _events
               .where((e) => !e.begin.isBefore(tomorrow))
               .length;
-          final allDone =
-              chosen != null &&
-              chosen.isEmpty &&
-              _s.settings.focusIds.isNotEmpty;
+          bool doneFor(FocusSide side) {
+            final c = chosenBy[side];
+            final ids = side.isPerso
+                ? _s.settings.focusPersoIds
+                : _s.settings.focusIds;
+            return c != null && c.isEmpty && ids.isNotEmpty;
+          }
+
+          final allDone = doneFor(first);
 
           return CustomScrollView(
             slivers: [
@@ -194,40 +215,55 @@ class _JourViewState extends State<JourView> {
                     ),
                   ),
                 ),
-                _title(
-                  context,
-                  'Les 3 du jour',
-                  chosen != null ? 'choisies ce matin' : 'suggestion',
-                  action: tasks.isEmpty
-                      ? null
-                      : TextButton(
-                          onPressed: () => showFocusPicker(context, open),
-                          child: const Text('Changer'),
-                        ),
-                ),
+                for (final side in sides) ...[
+                  _title(
+                    context,
+                    'Les 3 du jour · ${side.label}',
+                    chosenBy[side] != null ? 'choisies ce matin' : 'suggestion',
+                    action: DayFocus.forSide(tasks, side).isEmpty
+                        ? null
+                        : TextButton(
+                            onPressed: () =>
+                                showFocusPicker(context, open, side),
+                            child: const Text('Changer'),
+                          ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverList.list(
+                      children: [
+                        if (focusBy[side]!.isEmpty)
+                          _doneCard(
+                            context,
+                            allDone: doneFor(side),
+                            open: open,
+                            side: side,
+                          )
+                        else
+                          for (final item in focusBy[side]!)
+                            FocusCard(
+                              key: ValueKey('focus-${item.id}'),
+                              item: item,
+                              now: now,
+                            ),
+                        if (side == first && focus.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Text(
+                              'Glisse à droite : fait · à gauche : plus tard',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Palette.of(context).faint),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   sliver: SliverList.list(
                     children: [
-                      if (focus.isEmpty)
-                        _doneCard(context, allDone: allDone, open: open)
-                      else ...[
-                        for (final item in focus)
-                          FocusCard(
-                            key: ValueKey('focus-${item.id}'),
-                            item: item,
-                            now: now,
-                          ),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Text(
-                            'Glisse à droite : fait · à gauche : plus tard',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: Palette.of(context).faint),
-                          ),
-                        ),
-                      ],
                       const SizedBox(height: 10),
                       Row(
                         children: [
@@ -238,7 +274,8 @@ class _JourViewState extends State<JourView> {
                                   ? 'autre tâche'
                                   : 'autres tâches',
                               action: 'Changer mes 3',
-                              onTap: () => showFocusPicker(context, open),
+                              onTap: () =>
+                                  showFocusPicker(context, open, first),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -375,10 +412,14 @@ class _JourViewState extends State<JourView> {
     BuildContext context, {
     required bool allDone,
     required List<Item> open,
+    required FocusSide side,
   }) {
     final p = Palette.of(context);
     final theme = Theme.of(context);
-    final hasTasks = open.any((i) => i.kind == ItemKind.task);
+    final hasTasks = DayFocus.forSide(
+      open,
+      side,
+    ).any((i) => i.kind == ItemKind.task);
     return Material(
       color: p.card,
       shape: RoundedRectangleBorder(
@@ -392,15 +433,15 @@ class _JourViewState extends State<JourView> {
           children: [
             Text(
               allDone
-                  ? 'Tes priorités du jour sont faites.'
-                  : 'Aucune tâche à mettre en avant.',
+                  ? 'Tes priorités ${side.label.toLowerCase()} du jour sont faites.'
+                  : 'Rien à mettre en avant côté ${side.label.toLowerCase()}.',
               style: theme.textTheme.titleMedium,
             ),
             if (hasTasks)
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () => showFocusPicker(context, open),
+                  onPressed: () => showFocusPicker(context, open, side),
                   child: const Text('En choisir d\'autres'),
                 ),
               ),

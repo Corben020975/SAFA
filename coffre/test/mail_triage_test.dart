@@ -106,6 +106,21 @@ void main() {
     expect(text, contains('84,20 €'));
   });
 
+  test('présélection : numéros valides, réponse illisible signalée', () {
+    expect(parsePicked('Mails à ouvrir : [2, 5, 99, "x"]', 10), {2, 5});
+    expect(parsePicked('[]', 10), isEmpty);
+    expect(() => parsePicked('aucun', 10), throwsA(isA<MailException>()));
+  });
+
+  test('describeHeads : une ligne par mail', () {
+    final text = describeHeads(const [
+      MailDigest(uid: 1, from: 'A', subject: 'Un'),
+      MailDigest(uid: 2, from: 'B', subject: 'Deux'),
+    ]);
+    expect(text.split('\n'), hasLength(2));
+    expect(text, startsWith('1. De : A | Objet : Un'));
+  });
+
   test('cleanText retire le HTML', () {
     expect(
       GmailReader.cleanText(

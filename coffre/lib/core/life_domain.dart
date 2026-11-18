@@ -87,12 +87,11 @@ bool itemIsPro(Item item) => itemDomain(item) == true;
 
 bool itemIsPerso(Item item) => itemDomain(item) == false;
 
-/// Un élément non classé reste visible dans Pro comme dans Perso :
-/// le filtre ne cache jamais une tâche qu'on n'a pas rangée.
+/// Un élément non classé compte comme Pro : Coffre sert d'abord au travail.
 List<Item> filterByDayMode(List<Item> items, DayMode mode) => switch (mode) {
   DayMode.all => items,
-  DayMode.pro => items.where((i) => itemDomain(i) != false).toList(),
-  DayMode.perso => items.where((i) => itemDomain(i) != true).toList(),
+  DayMode.pro => items.where((i) => !itemIsPerso(i)).toList(),
+  DayMode.perso => items.where(itemIsPerso).toList(),
 };
 
 /// Tags d'état Grokbot à afficher en badge.

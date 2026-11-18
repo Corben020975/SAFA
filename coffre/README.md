@@ -3,8 +3,8 @@
 App Android personnelle, privée, hors-ligne par défaut : idées, tâches, notes et rappels au même endroit.
 Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrées sur le téléphone.
 
-- **Jour** : ta journée en une frise (rendez-vous, rappels, créneaux libres, repère « maintenant ») et **les 3 du jour** : 3 priorités choisies le matin (ou suggérées : retards, priorité haute, échéance). Le reste attend dans deux tuiles. Notification « Tes 3 priorités » à 7 h 30.
-- **Flux** : tout le contenu, avec le filtre **Pro / Perso / Tout** (Grokbot → Pro ; une capture sans contexte reste visible des deux côtés), plus Inbox / type / recherche / tri et gestes de balayage.
+- **Jour** : ta journée en une frise (rendez-vous, rappels, créneaux libres, repère « maintenant ») et **les 3 du jour**, en deux blocs **Pro** et **Perso** (Pro en premier en semaine, Perso le week-end ; sans contexte = Pro) : 3 priorités choisies le matin (ou suggérées : retards, priorité haute, échéance). Le reste attend dans deux tuiles. Notification « Tes 3 priorités » à 7 h 30.
+- **Flux** : tout le contenu, avec le filtre **Pro / Perso / Tout** (Grokbot → Pro, Gmail → Perso, sans contexte → Pro), plus Inbox / type / recherche / tri et gestes de balayage.
 - **Barre de capture** toujours en bas : tu écris ou dictes, Coffre devine le type, la date, la priorité
   et le contexte (Travail, Santé, Admin…), tu relis l'aperçu, tu envoies. Le texte d'origine est gardé.
 - **Plus tard** sur chaque carte, **pré-alerte** 1 h 30 avant un rendez-vous, report 5/15/60 min depuis la notification.
@@ -16,7 +16,7 @@ Saisie au clavier ou à la voix, rappels fiables sur Samsung, données chiffrée
   Au choix : **Gemini** (Google, clé gratuite) ou **Claude** (Anthropic, payant à l'usage).
 - **Agenda Google** : rendez-vous du jour dans *Jour*, ajout d'un rappel à l'agenda (via l'agenda du téléphone, sans connexion Google).
 - **Notion** (optionnel) : envoyer un élément dans une base Notion.
-- **Mails perso** (optionnel) : à 7 h 30, 13 h et à l'ouverture, Coffre relit Gmail (IMAP + mot de passe d'application, sans marquer comme lu), fait trier les nouveaux mails (hors Promotions, Réseaux sociaux, Forums) par Claude Haiku et crée les rappels côté Perso : factures (la veille de l'échéance), rendez-vous (tag « hors agenda » s'ils manquent dans l'agenda), démarches.
+- **Mails perso** (optionnel) : à 7 h 30, 13 h et à l'ouverture, Coffre relit Gmail (IMAP + mot de passe d'application, sans marquer comme lu), fait trier les nouveaux mails (hors Promotions, Réseaux sociaux, Forums) par Claude Haiku en deux temps : objets de tous les nouveaux mails, puis lecture de ceux qui comptent et crée les rappels côté Perso : factures (la veille de l'échéance), rendez-vous (tag « hors agenda » s'ils manquent dans l'agenda), démarches.
 
 - **Aucun compte, aucun serveur, aucune statistique.** Internet sert uniquement à l'IA et à Notion, quand tu le demandes.
 - **Base chiffrée** (SQLite3 Multiple Ciphers, ChaCha20). La clé est générée au premier lancement et reste dans le Keystore Android.

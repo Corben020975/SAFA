@@ -88,10 +88,10 @@ void main() {
       expect(filterByDayMode(items, DayMode.all), hasLength(2));
     });
 
-    test('une capture sans contexte reste visible des deux côtés', () {
+    test('une capture sans contexte compte comme Pro', () {
       final items = [_item(content: 'Sans contexte')];
       expect(filterByDayMode(items, DayMode.pro), hasLength(1));
-      expect(filterByDayMode(items, DayMode.perso), hasLength(1));
+      expect(filterByDayMode(items, DayMode.perso), isEmpty);
     });
   });
 }

@@ -68,7 +68,12 @@ class MailTriageResult {
 /// connexion Google dans l'app, rien n'est marqué comme lu.
 class GmailReader {
   static const _host = 'imap.gmail.com';
-  static const maxMails = 30;
+
+  /// En-têtes passés en revue par tri (les plus récents).
+  static const maxScanned = 200;
+
+  /// Mails ouverts (texte lu) par tri, parmi ceux que l'IA a retenus.
+  static const maxOpened = 25;
   static const _textChars = 900;
 
   /// Recherche Gmail (extension IMAP X-GM-RAW).
@@ -76,12 +81,14 @@ class GmailReader {
       'X-GM-RAW "-category:promotions -category:social -category:forums"';
 
   /// Nouveaux mails de la boîte de réception depuis [afterUid] (ou les
-  /// 3 derniers jours au premier passage). Renvoie aussi le nouveau curseur.
-  /// Renvoie les mails lus, le nouveau curseur, la validité des UID et le
-  /// nombre de mails trouvés par la recherche.
+  /// 3 derniers jours au premier passage), en deux temps : [pick] choisit
+  /// d'après l'expéditeur et l'objet ceux qui méritent d'être ouverts, puis
+  /// leur texte est lu. Renvoie les mails ouverts, le nouveau curseur, la
+  /// validité des UID et le nombre de mails passés en revue.
   static Future<(List<MailDigest>, int?, int?, int)> fetchNew({
     required String address,
     required String password,
+    required Future<Set<int>> Function(List<MailDigest> heads) pick,
     int? afterUid,
     int? uidValidity,
     DateTime? now,
@@ -112,15 +119,17 @@ class GmailReader {
               .toList()
             ..sort();
       if (uids.isEmpty) return (const <MailDigest>[], afterUid, validity, 0);
-      final recent = uids.length > maxMails
-          ? uids.sublist(uids.length - maxMails)
+      final recent = uids.length > maxScanned
+          ? uids.sublist(uids.length - maxScanned)
           : uids;
 
+      // 1. En-têtes seulement : rapide, même pour 200 mails.
       final heads = await client.uidFetchMessages(
         MessageSequence.fromIds(recent, isUid: true),
         '(UID ENVELOPE BODYSTRUCTURE)',
       );
-      final mails = <MailDigest>[];
+      final digests = <MailDigest>[];
+      final parts = <int, (String, bool)?>{};
       final fetched = heads.messages;
       for (var k = 0; k < fetched.length; k++) {
         final m = fetched[k];
@@ -130,23 +139,8 @@ class GmailReader {
         if (uid == null) continue;
         final env = m.envelope;
         final sender = env?.from?.firstOrNull;
-        var text = '';
-        final part = _textPart(m.body);
-        if (part != null) {
-          try {
-            final fetched = await client.uidFetchMessage(
-              uid,
-              '(BODY.PEEK[${part.$1}])',
-            );
-            final raw = fetched.messages.firstOrNull
-                ?.getPart(part.$1)
-                ?.decodeContentText();
-            text = cleanText(raw ?? '', html: part.$2);
-          } catch (_) {
-            text = ''; // l'objet suffit souvent
-          }
-        }
-        mails.add(
+        parts[uid] = _textPart(m.body);
+        digests.add(
           MailDigest(
             uid: uid,
             from: sender == null
@@ -158,19 +152,46 @@ class GmailReader {
                   ].join(' '),
             subject: env?.subject ?? '(sans objet)',
             date: env?.date,
+          ),
+        );
+      }
+      // Rien de lisible : on n'avance pas le curseur, pour ne rien perdre.
+      if (digests.isEmpty) return (const <MailDigest>[], afterUid, validity, 0);
+
+      // 2. L'IA retient ceux qui méritent d'être ouverts.
+      final chosen = digests.isEmpty ? <int>{} : await pick(digests);
+      final opened = <MailDigest>[];
+      for (final d in digests.where((d) => chosen.contains(d.uid))) {
+        if (opened.length >= maxOpened) break;
+        var text = '';
+        final part = parts[d.uid];
+        if (part != null) {
+          try {
+            final body = await client.uidFetchMessage(
+              d.uid,
+              '(BODY.PEEK[${part.$1}])',
+            );
+            final raw = body.messages.firstOrNull
+                ?.getPart(part.$1)
+                ?.decodeContentText();
+            text = cleanText(raw ?? '', html: part.$2);
+          } catch (_) {
+            text = ''; // l'objet suffit souvent
+          }
+        }
+        opened.add(
+          MailDigest(
+            uid: d.uid,
+            from: d.from,
+            subject: d.subject,
+            date: d.date,
             text: text.length > _textChars
                 ? '${text.substring(0, _textChars)}…'
                 : text,
           ),
         );
       }
-      // Rien de lisible : on n'avance pas le curseur, pour ne rien perdre.
-      return (
-        mails,
-        mails.isEmpty ? afterUid : uids.last,
-        validity,
-        uids.length,
-      );
+      return (opened, uids.last, validity, digests.length);
     } finally {
       try {
         await client.logout();
@@ -229,6 +250,31 @@ class GmailReader {
         .replaceAll(RegExp(r'\s*\n\s*'), '\n')
         .replaceAll(RegExp(r'\n{2,}'), '\n')
         .trim();
+  }
+}
+
+/// En-têtes → liste numérotée pour la présélection.
+String describeHeads(List<MailDigest> mails) => [
+  for (var i = 0; i < mails.length; i++)
+    '${i + 1}. De : ${mails[i].from} | Objet : ${mails[i].subject}',
+].join('\n');
+
+/// Réponse de présélection (tableau de numéros) → indices 1…count.
+Set<int> parsePicked(String answer, int count) {
+  final start = answer.indexOf('[');
+  final end = answer.lastIndexOf(']');
+  if (start < 0 || end <= start) {
+    throw const MailException('Réponse de Claude illisible. Réessaie.');
+  }
+  try {
+    final json = jsonDecode(answer.substring(start, end + 1));
+    return {
+      if (json is List)
+        for (final n in json)
+          if (n is int && n >= 1 && n <= count) n,
+    };
+  } catch (_) {
+    throw const MailException('Réponse de Claude illisible. Réessaie.');
   }
 }
 
@@ -335,22 +381,30 @@ Future<MailTriageResult> runMailTriage({
     );
   }
   final at = now ?? DateTime.now();
-  final (fetched, lastUid, validity, found) = await GmailReader.fetchNew(
-    address: address,
-    password: password,
-    afterUid: settings.mailLastUid,
-    uidValidity: settings.mailUidValidity,
-    now: at,
-  );
   // Mails déjà traités (relecture des 3 derniers jours) : on les saute.
   final known = {
     for (final i in await db.allItems())
       if (i.tags.contains('gmail')) ?i.raw,
   };
-  final mails = [
-    for (final m in fetched)
-      if (!known.contains(_rawOf(m))) m,
-  ];
+  final (mails, lastUid, validity, found) = await GmailReader.fetchNew(
+    address: address,
+    password: password,
+    afterUid: settings.mailLastUid,
+    uidValidity: settings.mailUidValidity,
+    now: at,
+    pick: (heads) async {
+      final fresh = [
+        for (final h in heads)
+          if (!known.contains(_rawOf(h))) h,
+      ];
+      if (fresh.isEmpty) return <int>{};
+      final picked = parsePicked(
+        await ai.mailPreselect(describeHeads(fresh)),
+        fresh.length,
+      );
+      return {for (final n in picked) fresh[n - 1].uid};
+    },
+  );
   final added = <Item>[];
   if (mails.isNotEmpty) {
     final answer = await ai.mailTriage(describeMails(mails), at);
@@ -360,7 +414,6 @@ Future<MailTriageResult> runMailTriage({
       final item = await db.createItem(
         kind: ItemKind.task,
         content: a.title,
-        priority: a.type == 'facture' ? ItemPriority.high : ItemPriority.normal,
         tags: ['gmail', a.type],
         remindAt: remind,
         preAlert: a.type == 'rdv' && a.hasTime,
@@ -372,7 +425,7 @@ Future<MailTriageResult> runMailTriage({
     }
   }
   if (lastUid != null) await settings.setMailCursor(lastUid, validity);
-  return MailTriageResult(fetched.length, added, found: found);
+  return MailTriageResult(mails.length, added, found: found);
 }
 
 String _rawOf(MailDigest m) => 'Mail de ${m.from}\nObjet : ${m.subject}';

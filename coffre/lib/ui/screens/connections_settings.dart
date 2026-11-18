@@ -92,7 +92,7 @@ Future<String?> _askSecret(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(d, ''),
-          child: const Text('Effacer'),
+          child: const Text('Retirer'),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(d, controller.text),
@@ -100,7 +100,32 @@ Future<String?> _askSecret(
         ),
       ],
     ),
-  );
+  ).then((value) async {
+    // Champ vide ou « Retirer » : on demande confirmation avant d'effacer.
+    if (value == null || value.trim().isNotEmpty || !context.mounted) {
+      return value;
+    }
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text('Retirer : $title ?'),
+        content: const Text(
+          'Coffre ne pourra plus s\'en servir tant que tu ne l\'auras pas remis.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(d, false),
+            child: const Text('Garder'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(d, true),
+            child: const Text('Retirer'),
+          ),
+        ],
+      ),
+    );
+    return sure == true ? '' : null;
+  });
 }
 
 void _snack(BuildContext context, String text) => ScaffoldMessenger.of(context)

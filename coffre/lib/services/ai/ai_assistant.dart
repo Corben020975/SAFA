@@ -123,14 +123,35 @@ class AiAssistant {
     'low',
   );
 
+  /// Présélection des mails perso d'après l'expéditeur et l'objet
+  /// (Claude Haiku) : numéros des mails qui méritent d'être ouverts.
+  Future<String> mailPreselect(String heads) => _send(
+    'Voici les en-têtes des nouveaux mails personnels de l\'utilisateur '
+        '(Belgique). Retiens ceux qui peuvent demander une action de sa part : '
+        'facture ou paiement à faire, rendez-vous, document à renvoyer, '
+        'démarche avec échéance. Écarte publicités, newsletters, réseaux '
+        'sociaux, confirmations sans action, notifications automatiques, '
+        'changements de conditions générales ou de politique de '
+        'confidentialité et invitations à mettre à jour une application. '
+        'Réponds UNIQUEMENT par un tableau JSON de numéros, [] si aucun : '
+        '[3, 7, 12]. Les marqueurs comme [PERSONNE 1] remplacent des données '
+        'masquées.',
+    heads,
+    'low',
+    engine: _claude,
+    light: true,
+  );
+
   /// Tri des mails perso : toujours Claude Haiku (économique), noms masqués.
   Future<String> mailTriage(String mails, DateTime now) => _send(
     'Tu tries les mails personnels de l\'utilisateur (Belgique). Repère uniquement ce '
         'qui demande une action de sa part : facture ou paiement à faire '
         '(type « facture »), rendez-vous (type « rdv »), document à renvoyer ou '
         'démarche avec échéance (type « action »). Ignore publicités, '
-        'newsletters, confirmations sans action, paiements déjà effectués et '
-        'notifications automatiques.\n'
+        'newsletters, confirmations sans action, paiements déjà effectués, '
+        'notifications automatiques, changements de conditions générales ou de '
+        'politique de confidentialité et invitations à mettre à jour une '
+        'application.\n'
         'Réponds UNIQUEMENT par un tableau JSON, [] si rien : '
         '[{"mail": 1, "type": "facture", "titre": "Payer facture Engie 84,20 €", '
         '"date": "2026-11-20", "heure": null}]. '

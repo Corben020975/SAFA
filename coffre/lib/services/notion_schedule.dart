@@ -152,22 +152,24 @@ Future<void> notionSyncCallback() async {
       final open = (await db.allItems())
           .where((i) => i.status != ItemStatus.done)
           .toList();
-      final focus = await DayFocus.ensure(settings, open, now);
-      if (focus.isNotEmpty ||
-          brief != null ||
-          added.isNotEmpty ||
-          mailLine != null) {
+      final sides = DayFocus.order(now);
+      final focusBy = {
+        for (final side in sides)
+          side: await DayFocus.ensure(settings, open, now, side),
+      };
+      final total = focusBy.values.fold(0, (n, f) => n + f.length);
+      if (total > 0 || brief != null || added.isNotEmpty || mailLine != null) {
         await notifications.showDigest(
-          focus.length == 1
-              ? 'Ta priorité du jour'
-              : 'Tes ${focus.length} priorités du jour',
+          'Tes priorités du jour',
           [
             ?brief,
-            if (focus.isNotEmpty)
-              [
-                for (var k = 0; k < focus.length; k++)
-                  '${k + 1}. ${line(focus[k])}',
-              ].join('\n'),
+            for (final side in sides)
+              if (focusBy[side]!.isNotEmpty)
+                [
+                  '${side.label} :',
+                  for (var k = 0; k < focusBy[side]!.length; k++)
+                    '${k + 1}. ${line(focusBy[side]![k])}',
+                ].join('\n'),
             if (added.isNotEmpty)
               added.length == 1
                   ? '+ 1 nouvelle tâche depuis Notion'

@@ -8,18 +8,23 @@ import '../theme.dart';
 import 'focus_card.dart';
 
 /// « Choisis tes 3 » : les plus urgentes en haut, 3 cases au maximum.
-Future<void> showFocusPicker(BuildContext context, List<Item> open) {
+Future<void> showFocusPicker(
+  BuildContext context,
+  List<Item> open, [
+  FocusSide side = FocusSide.pro,
+]) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (_) => _FocusPicker(open: open),
+    builder: (_) => _FocusPicker(open: open, side: side),
   );
 }
 
 class _FocusPicker extends StatefulWidget {
-  const _FocusPicker({required this.open});
+  const _FocusPicker({required this.open, required this.side});
   final List<Item> open;
+  final FocusSide side;
 
   @override
   State<_FocusPicker> createState() => _FocusPickerState();
@@ -27,11 +32,19 @@ class _FocusPicker extends StatefulWidget {
 
 class _FocusPickerState extends State<_FocusPicker> {
   late final DateTime _now = DateTime.now();
-  late final List<Item> _ranked = DayFocus.ranked(widget.open, _now);
+  late final List<Item> _ranked = DayFocus.ranked(
+    DayFocus.forSide(widget.open, widget.side),
+    _now,
+  );
   late final Set<int> _selected = {
     for (final i
-        in DayFocus.chosen(AppScope.of(context).settings, widget.open, _now) ??
-            DayFocus.suggest(widget.open, _now))
+        in DayFocus.chosen(
+              AppScope.of(context).settings,
+              widget.open,
+              _now,
+              widget.side,
+            ) ??
+            DayFocus.suggest(widget.open, _now, widget.side))
       i.id,
   };
 
@@ -41,7 +54,11 @@ class _FocusPickerState extends State<_FocusPicker> {
       for (final i in _ranked)
         if (_selected.contains(i.id)) i.id,
     ];
-    await settings.setFocus(DayFocus.dayKey(_now), ids);
+    await settings.setFocus(
+      DayFocus.dayKey(_now),
+      ids,
+      perso: widget.side.isPerso,
+    );
     if (mounted) Navigator.pop(context);
   }
 
@@ -62,7 +79,7 @@ class _FocusPickerState extends State<_FocusPicker> {
               children: [
                 Expanded(
                   child: Text(
-                    'Choisis tes 3',
+                    'Choisis tes 3 · ${widget.side.label}',
                     style: displayStyle(context, 24),
                   ),
                 ),

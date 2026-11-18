@@ -61,4 +61,35 @@ void main() {
       await db.close();
     },
   );
+
+  test('Pro et Perso : deux listes séparées, sans contexte = Pro', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final settings = AppSettings(db);
+    await settings.load();
+    final now = DateTime(2026, 11, 18, 8); // mercredi
+    await db.createItem(
+      kind: ItemKind.task,
+      content: 'Facture Engie',
+      context: 'Perso',
+      tags: ['gmail', 'facture'],
+      priority: ItemPriority.high,
+    );
+    await db.createItem(kind: ItemKind.task, content: 'Note DG');
+    await db.createItem(
+      kind: ItemKind.task,
+      content: 'Suivi Bachar',
+      tags: ['notion', 'suivi'],
+    );
+    final open = await db.allItems();
+    final pro = await DayFocus.ensure(settings, open, now, FocusSide.pro);
+    final perso = await DayFocus.ensure(settings, open, now, FocusSide.perso);
+    expect([for (final i in pro) i.content]..sort(), [
+      'Note DG',
+      'Suivi Bachar',
+    ]);
+    expect([for (final i in perso) i.content], ['Facture Engie']);
+    expect(DayFocus.order(now).first, FocusSide.pro);
+    expect(DayFocus.order(DateTime(2026, 11, 21)).first, FocusSide.perso);
+    await db.close();
+  });
 }

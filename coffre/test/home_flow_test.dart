@@ -109,10 +109,10 @@ void main() {
     );
     await settle(tester);
 
-    // Vue Jour : une priorité (l'idée n'en est pas une), visible aussi
-    // dans la frise de la journée.
-    expect(find.text('Ta priorité.'), findsOneWidget);
-    expect(find.text('Les 3 du jour'), findsOneWidget);
+    // Vue Jour : deux blocs ; la tâche Santé est côté Perso (l'idée n'est
+    // pas une priorité), visible aussi dans la frise de la journée.
+    expect(find.text('Les 3 du jour · Pro'), findsOneWidget);
+    expect(find.text('Les 3 du jour · Perso'), findsOneWidget);
     expect(find.text('Appeler le médecin'), findsWidgets);
 
     // Capture rapide : aperçu de l'analyse avant envoi, puis enregistrement.
@@ -144,7 +144,12 @@ void main() {
     final card = find.byWidgetPredicate(
       (w) => w is FocusCard && w.item.content == 'Appeler le médecin',
     );
-    await tester.ensureVisible(card);
+    // Le bloc Perso est sous le bloc Pro : on fait défiler jusqu'à la carte.
+    await tester.scrollUntilVisible(
+      card,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await settle(tester);
     await tester.tap(
       find.descendant(of: card, matching: find.byTooltip('Fait')),

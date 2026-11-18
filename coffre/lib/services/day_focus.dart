@@ -1,10 +1,33 @@
+import '../core/life_domain.dart';
 import '../data/app_settings.dart';
 import '../data/database.dart';
 import '../data/enums.dart';
 
+/// Deux listes : les 3 du jour Pro et les 3 du jour Perso.
+enum FocusSide {
+  pro('Pro'),
+  perso('Perso');
+
+  const FocusSide(this.label);
+  final String label;
+
+  bool get isPerso => this == FocusSide.perso;
+}
+
 /// « Les 3 du jour » : peu de choses, choisies le matin. Le reste attend.
 class DayFocus {
   static const size = 3;
+
+  /// Week-end : le bloc Perso passe en premier.
+  static List<FocusSide> order(DateTime now) => now.weekday >= DateTime.saturday
+      ? const [FocusSide.perso, FocusSide.pro]
+      : const [FocusSide.pro, FocusSide.perso];
+
+  /// Éléments du côté demandé (sans contexte = Pro).
+  static List<Item> forSide(List<Item> open, FocusSide side) => [
+    for (final i in open)
+      if (itemIsPerso(i) == side.isPerso) i,
+  ];
 
   static String dayKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
 
@@ -41,19 +64,25 @@ class DayFocus {
     return tasks;
   }
 
-  static List<Item> suggest(List<Item> open, DateTime now) =>
-      ranked(open, now).take(size).toList();
+  static List<Item> suggest(
+    List<Item> open,
+    DateTime now, [
+    FocusSide side = FocusSide.pro,
+  ]) => ranked(forSide(open, side), now).take(size).toList();
 
   /// Choix enregistré pour aujourd'hui (éléments encore ouverts), ou null
   /// si le jour a changé.
   static List<Item>? chosen(
     AppSettings settings,
     List<Item> open,
-    DateTime now,
-  ) {
-    if (settings.focusDay != dayKey(now)) return null;
+    DateTime now, [
+    FocusSide side = FocusSide.pro,
+  ]) {
+    final day = side.isPerso ? settings.focusPersoDay : settings.focusDay;
+    if (day != dayKey(now)) return null;
+    final ids = side.isPerso ? settings.focusPersoIds : settings.focusIds;
     final byId = {for (final i in open) i.id: i};
-    return [for (final id in settings.focusIds) ?byId[id]];
+    return [for (final id in ids) ?byId[id]];
   }
 
   /// Les 3 du jour ; au premier passage de la journée, la suggestion est
@@ -61,12 +90,15 @@ class DayFocus {
   static Future<List<Item>> ensure(
     AppSettings settings,
     List<Item> open,
-    DateTime now,
-  ) async {
-    final existing = chosen(settings, open, now);
+    DateTime now, [
+    FocusSide side = FocusSide.pro,
+  ]) async {
+    final existing = chosen(settings, open, now, side);
     if (existing != null) return existing;
-    final picked = suggest(open, now);
-    await settings.setFocus(dayKey(now), [for (final i in picked) i.id]);
+    final picked = suggest(open, now, side);
+    await settings.setFocus(dayKey(now), [
+      for (final i in picked) i.id,
+    ], perso: side.isPerso);
     return picked;
   }
 }

@@ -56,6 +56,10 @@ class AppSettings extends ChangeNotifier {
   String? focusDay;
   List<int> focusIds = const [];
 
+  /// Les 3 du jour côté Perso (jour et éléments distincts du côté Pro).
+  String? focusPersoDay;
+  List<int> focusPersoIds = const [];
+
   /// Notification « Tes 3 priorités » à 7 h 30.
   bool morningFocus = true;
 
@@ -121,6 +125,12 @@ class AppSettings extends ChangeNotifier {
     notionScheduled = p['notionScheduled'] != 'false';
     morningFocus = p['morningFocus'] != 'false';
     focusDay = p['focusDay'];
+    focusPersoDay = p['focusPersoDay'];
+    focusPersoIds = (p['focusPersoIds'] ?? '')
+        .split(',')
+        .map(int.tryParse)
+        .whereType<int>()
+        .toList();
     focusIds = (p['focusIds'] ?? '')
         .split(',')
         .map(int.tryParse)
@@ -211,7 +221,13 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> setNotionAutoImport(bool value) =>
       _set(() => notionAutoImport = value, 'notionAutoImport', '$value');
-  Future<void> setFocus(String day, List<int> ids) async {
+  Future<void> setFocus(String day, List<int> ids, {bool perso = false}) async {
+    if (perso) {
+      focusPersoIds = List.unmodifiable(ids);
+      await _db.setPref('focusPersoIds', ids.join(','));
+      await _set(() => focusPersoDay = day, 'focusPersoDay', day);
+      return;
+    }
     focusIds = List.unmodifiable(ids);
     await _db.setPref('focusIds', ids.join(','));
     await _set(() => focusDay = day, 'focusDay', day);
