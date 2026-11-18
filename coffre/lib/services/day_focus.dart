@@ -81,7 +81,12 @@ class DayFocus {
     final day = side.isPerso ? settings.focusPersoDay : settings.focusDay;
     if (day != dayKey(now)) return null;
     final ids = side.isPerso ? settings.focusPersoIds : settings.focusIds;
-    final byId = {for (final i in open) i.id: i};
+    final byId = {for (final i in forSide(open, side)) i.id: i};
+    // Ancien choix qui mélangeait Pro et Perso : on repart d'une suggestion.
+    final openIds = {for (final i in open) i.id};
+    if (ids.any((id) => openIds.contains(id) && !byId.containsKey(id))) {
+      return null;
+    }
     return [for (final id in ids) ?byId[id]];
   }
 

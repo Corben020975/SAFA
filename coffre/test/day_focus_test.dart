@@ -89,6 +89,14 @@ void main() {
     ]);
     expect([for (final i in perso) i.content], ['Facture Engie']);
     expect(DayFocus.order(now).first, FocusSide.pro);
+    // Un ancien choix mélangé est ignoré : nouvelle suggestion du bon côté.
+    await settings.setFocus(DayFocus.dayKey(now), [for (final i in open) i.id]);
+    expect(DayFocus.chosen(settings, open, now), isNull);
+    expect(
+      [for (final i in await DayFocus.ensure(settings, open, now)) i.content]
+        ..sort(),
+      ['Note DG', 'Suivi Bachar'],
+    );
     expect(DayFocus.order(DateTime(2026, 11, 21)).first, FocusSide.perso);
     await db.close();
   });

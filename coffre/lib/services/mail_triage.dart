@@ -408,7 +408,9 @@ Future<MailTriageResult> runMailTriage({
   final added = <Item>[];
   if (mails.isNotEmpty) {
     final answer = await ai.mailTriage(describeMails(mails), at);
+    final seen = <String>{};
     for (final a in parseMailActions(answer, mails.length)) {
+      if (!seen.add('${a.mail}-${a.type}')) continue;
       final mail = mails[a.mail - 1];
       final remind = reminderFor(a, at);
       final item = await db.createItem(

@@ -218,8 +218,8 @@ class _JourViewState extends State<JourView> {
                 for (final side in sides) ...[
                   _title(
                     context,
-                    'Les 3 du jour · ${side.label}',
-                    chosenBy[side] != null ? 'choisies ce matin' : 'suggestion',
+                    side.label,
+                    'les 3 du jour',
                     action: DayFocus.forSide(tasks, side).isEmpty
                         ? null
                         : TextButton(

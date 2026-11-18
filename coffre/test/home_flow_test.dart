@@ -111,8 +111,9 @@ void main() {
 
     // Vue Jour : deux blocs ; la tâche Santé est côté Perso (l'idée n'est
     // pas une priorité), visible aussi dans la frise de la journée.
-    expect(find.text('Les 3 du jour · Pro'), findsOneWidget);
-    expect(find.text('Les 3 du jour · Perso'), findsOneWidget);
+    expect(find.text('Pro'), findsWidgets);
+    expect(find.text('Perso'), findsWidgets);
+    expect(find.text('les 3 du jour'), findsNWidgets(2));
     expect(find.text('Appeler le médecin'), findsWidgets);
 
     // Capture rapide : aperçu de l'analyse avant envoi, puis enregistrement.
